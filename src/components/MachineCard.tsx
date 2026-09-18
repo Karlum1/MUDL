@@ -40,6 +40,9 @@ export function MachineCard({
         {machine.status === "available" && (
           <p className="text-sm leading-6 text-slate-300">พร้อมซักได้ทันที · Available now</p>
         )}
+        {machine.status === "out_of_order" && (
+          <p className="text-sm leading-6 text-rose-200">ปิดใช้ชั่วคราว</p>
+        )}
         {machine.status === "reserved" && (
           <p className="text-sm leading-6 text-violet-100">
             จองให้คิว {machine.ticketNumber ? String(machine.ticketNumber).padStart(3, "0") : "ถัดไป"} · เริ่มได้ภายใน 5 นาที

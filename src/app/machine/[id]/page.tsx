@@ -8,8 +8,11 @@ import { useParams } from "next/navigation";
 
 export default function MachinePage() {
   const params = useParams<{ id: string }>();
-  const { machines, connected, error, uid } = useMachineLive();
+  const { machines, connected, error, uid, waiting } = useMachineLive();
   const machine = machines.find((item) => item.id === params.id);
+  const queueBlocked = Boolean(
+    waiting.length > 0 && waiting[0] && waiting[0].uid !== uid,
+  );
 
   return (
     <div className="flex min-h-full flex-col">
@@ -28,7 +31,7 @@ export default function MachinePage() {
                 : "ไม่พบเครื่องนี้ ตรวจ QR อีกครั้ง"}
             </div>
           ) : (
-            <MachineActions machine={machine} uid={uid} />
+            <MachineActions machine={machine} uid={uid} queueBlocked={queueBlocked} />
           )}
         </div>
       </main>

@@ -56,7 +56,7 @@ export function NotificationDock({
 
   return (
     <aside className="space-y-3">
-      {myOpen && <TicketCard ticket={myOpen} highlight />}
+      {myOpen && <TicketCard ticket={myOpen} highlight canCancel />}
 
       <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-5">
         <h2 className="text-sm font-semibold text-white">แจ้งเตือน · Web Push</h2>
@@ -76,7 +76,7 @@ export function NotificationDock({
           onClick={takeTicket}
           className="mt-3 w-full rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold text-white ring-1 ring-white/15 hover:bg-white/15 disabled:opacity-50"
         >
-          {myOpen ? "มีบัตรคิววันนี้แล้ว" : "เก็บบัตรคิว (เมื่อเครื่องเต็ม)"}
+          {myOpen ? "มีบัตรคิววันนี้แล้ว" : "เก็บบัตรคิว"}
         </button>
         {permission === "denied" && (
           <p className="mt-2 text-xs text-amber-200">

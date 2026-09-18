@@ -3,13 +3,45 @@
 import { STATUS_COPY } from "@/lib/status";
 import { bangkokDateKey, bangkokDateLabel } from "@/lib/day";
 import { useMachineLive } from "@/hooks/useMachineLive";
+import type { QueueTicket } from "@/lib/types";
 import Link from "next/link";
+import { useEffect, useState } from "react";
+
+const HOLD_MS = 5 * 60 * 1000;
+
+function HoldCountdown({ calledAt }: { calledAt: number | null }) {
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(id);
+  }, []);
+  if (!calledAt) return <span>ภายใน 5 นาที</span>;
+  const left = Math.max(0, calledAt + HOLD_MS - now);
+  const sec = Math.ceil(left / 1000);
+  const mm = String(Math.floor(sec / 60)).padStart(2, "0");
+  const ss = String(sec % 60).padStart(2, "0");
+  if (left <= 0) return <span className="text-rose-300">หมดเวลา — กำลังข้ามคิว</span>;
+  return (
+    <span>
+      ไปเริ่มซักภายใน <span className="font-mono tabular-nums">{mm}:{ss}</span> ไม่งั้นข้าม
+    </span>
+  );
+}
+
+function labelFor(ticket: QueueTicket | undefined) {
+  if (!ticket) return "ยังไม่มีการเรียกคิว";
+  if (ticket.status === "called") return null;
+  return "กำลังใช้งานเครื่อง";
+}
 
 export default function BoardPage() {
   const { machines, tickets, connected, waiting, serving } = useMachineLive();
   const dateKey = bangkokDateKey();
-  const nowServing = serving[0];
+  const called = waiting.filter((t) => t.status === "called");
+  const nowServing = called[0] ?? serving.find((t) => t.status === "in_use");
   const nextUp = waiting.filter((t) => t.status === "waiting").slice(0, 6);
+  const skipped = tickets.filter((t) => t.status === "expired").slice(-4).reverse();
+  const caption = labelFor(nowServing);
 
   return (
     <div className="flex min-h-full flex-col bg-slate-950 text-white">
@@ -30,16 +62,18 @@ export default function BoardPage() {
 
       <main className="grid flex-1 gap-6 px-6 pb-8 lg:grid-cols-[1.2fr_1fr]">
         <section className="flex flex-col justify-center rounded-[2.5rem] border border-white/10 bg-slate-900/50 p-8">
-          <p className="text-lg text-slate-400">กำลังเรียก / กำลังซัก</p>
+          <p className="text-lg text-slate-400">
+            {nowServing?.status === "called" ? "กำลังเรียก — ห้ามตัดคิว" : "กำลังซัก"}
+          </p>
           <p className="mt-4 font-mono text-[8rem] leading-none font-semibold tabular-nums text-cyan-200">
             {nowServing ? String(nowServing.number).padStart(3, "0") : "---"}
           </p>
           <p className="mt-6 text-xl text-slate-300">
-            {nowServing
-              ? nowServing.status === "called"
-                ? "กรุณาไปเริ่มซักภายใน 5 นาที"
-                : "กำลังใช้งานเครื่อง"
-              : "ยังไม่มีการเรียกคิว"}
+            {nowServing?.status === "called" ? (
+              <HoldCountdown calledAt={nowServing.calledAt} />
+            ) : (
+              caption
+            )}
           </p>
           <div className="mt-10">
             <p className="text-sm uppercase tracking-[0.2em] text-slate-500">คิวถัดไป</p>
@@ -55,6 +89,21 @@ export default function BoardPage() {
               ))}
             </div>
           </div>
+          {skipped.length > 0 && (
+            <div className="mt-8">
+              <p className="text-sm uppercase tracking-[0.2em] text-rose-300">ไม่มา / ข้ามอัตโนมัติ</p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {skipped.map((ticket) => (
+                  <span
+                    key={ticket.id}
+                    className="rounded-xl bg-rose-400/15 px-4 py-2 font-mono text-xl tabular-nums text-rose-100"
+                  >
+                    {String(ticket.number).padStart(3, "0")}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </section>
 
         <section className="space-y-4">
@@ -69,6 +118,11 @@ export default function BoardPage() {
                   <div>
                     <p className="text-lg font-semibold">{machine.label}</p>
                     <p className="text-xs text-slate-400">{copy.th}</p>
+                    {machine.status === "reserved" && (
+                      <p className="mt-1 text-xs text-violet-200">
+                        จองคิว {machine.ticketNumber ? String(machine.ticketNumber).padStart(3, "0") : ""} · 5 นาที
+                      </p>
+                    )}
                   </div>
                   <p className="font-mono text-3xl tabular-nums text-cyan-100">
                     {machine.ticketNumber

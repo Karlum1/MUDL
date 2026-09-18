@@ -10,6 +10,7 @@ import {
   startMachine,
   subscribeMachines,
   subscribeTodayTickets,
+  cancelOwnTicket,
 } from "@/lib/machines";
 import type { AlertEvent, Machine, QueueTicket } from "@/lib/types";
 import { useAnonymousSession } from "@/hooks/useAnonymousSession";
@@ -175,7 +176,7 @@ export function useMachineLive() {
 
 export async function machineAction(
   id: string,
-  action: "start" | "collect" | "queue",
+  action: "start" | "collect" | "queue" | "cancelTicket",
   minutes?: 30 | 45 | "demo",
 ) {
   if (action === "start") {
@@ -184,6 +185,10 @@ export async function machineAction(
   }
   if (action === "queue") {
     return joinQueue();
+  }
+  if (action === "cancelTicket") {
+    await cancelOwnTicket(id);
+    return;
   }
   await collectClothes(id);
 }

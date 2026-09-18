@@ -9,8 +9,10 @@ export function actionErrorMessage(err: unknown) {
     NOT_FINISHED: "ยังซักไม่เสร็จ ไม่สามารถเคลียร์ผ้าได้",
     MACHINE_NOT_FOUND: "ไม่พบเครื่องนี้",
     NOT_OWNER: "รอบนี้ไม่ใช่ของคุณ — รอเจ้าของเอาผ้าออก",
-    NOT_YOUR_TURN: "ยังไม่ถึงคิวคุณ ดูเลขคิวที่แดชบอร์ดหรือจอคิว",
-    MACHINES_FREE: "ยังมีเครื่องว่าง เริ่มซักได้เลย",
+    NOT_YOUR_TURN: "ยังไม่ถึงคิวคุณ — เครื่องว่างจะจองให้คนถือบัตรก่อน",
+    MACHINES_FREE: "ยังมีเครื่องว่างและไม่มีคิวรอ ไปเริ่มซักได้เลย",
+    CANNOT_CANCEL: "ยกเลิกบัตรนี้ไม่ได้",
+    MACHINE_BROKEN: "เครื่องนี้ปิดใช้อยู่",
     AUTH_DISABLED: "ยังไม่ได้เปิด Anonymous Auth ใน Firebase Console",
     "permission-denied":
       "Firestore ปฏิเสธการเขียน — Publish กฎใน Console แล้วเปิด Anonymous Auth",

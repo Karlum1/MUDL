@@ -1,4 +1,9 @@
-export type MachineStatus = "available" | "reserved" | "in_use" | "finished";
+export type MachineStatus =
+  | "available"
+  | "reserved"
+  | "in_use"
+  | "finished"
+  | "out_of_order";
 
 export type Machine = {
   id: string;

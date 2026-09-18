@@ -63,6 +63,10 @@ export async function runLaundryTick() {
         `${machine.id}-almost`,
       );
     } else if (
+      data.status === "out_of_order"
+    ) {
+      continue;
+    } else if (
       data.status === "reserved" &&
       data.reservedUntil?.toMillis?.() <= now
     ) {
@@ -84,6 +88,18 @@ export async function runLaundryTick() {
     const calledAt = ticket.data().calledAt?.toMillis?.() ?? 0;
     if (calledAt && now - calledAt > RESERVE_MS) {
       await ticket.ref.update({ status: "expired" });
+      const machineId = ticket.data().machineId;
+      if (typeof machineId === "string") {
+        const machine = await db.collection("machines").doc(machineId).get();
+        if (machine.exists && machine.data()?.status === "reserved") {
+          await machine.ref.update({
+            status: "available",
+            ownerUid: null,
+            reservedUntil: null,
+            ticketNumber: null,
+          });
+        }
+      }
     }
   }
 

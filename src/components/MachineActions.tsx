@@ -10,9 +10,11 @@ import { useState } from "react";
 export function MachineActions({
   machine,
   uid,
+  queueBlocked = false,
 }: {
   machine: Machine;
   uid: string | null;
+  queueBlocked?: boolean;
 }) {
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -61,7 +63,7 @@ export function MachineActions({
         </div>
       )}
 
-      {(machine.status === "available" || reservedForMe) && (
+      {(machine.status === "available" || reservedForMe) && !queueBlocked && (
         <div className="mt-8 grid gap-3">
           <button
             type="button"
@@ -90,6 +92,16 @@ export function MachineActions({
         </div>
       )}
 
+      {machine.status === "available" && queueBlocked && (
+        <p className="mt-8 text-sm text-violet-100">
+          มีคนถือบัตรคิวอยู่ เครื่องว่างจะถูกจองให้คิวถัดไป ไม่สามารถตัดคิวได้
+        </p>
+      )}
+
+      {machine.status === "out_of_order" && (
+        <p className="mt-8 text-sm text-rose-200">เครื่องนี้ปิดใช้ชั่วคราว</p>
+      )}
+
       {machine.status === "in_use" && !isMine && (
         <p className="mt-8 text-sm text-slate-400">เครื่องนี้มีเจ้าของรอบอยู่ รอให้ซักเสร็จและเอาผ้าออก</p>
       )}
@@ -109,7 +121,11 @@ export function MachineActions({
         <p className="mt-8 text-sm text-amber-100">รอเจ้าของรอบเอาผ้าออก แล้วคิวถัดไปจะถูกเรียก</p>
       )}
 
-      {(machine.status === "in_use" || machine.status === "finished" || machine.status === "reserved") &&
+      {(machine.status === "in_use" ||
+        machine.status === "finished" ||
+        machine.status === "reserved" ||
+        (machine.status === "available" && queueBlocked) ||
+        machine.status === "out_of_order") &&
         !reservedForMe && (
           <button
             type="button"

@@ -31,6 +31,12 @@ export function SiteHeader({ connected }: { connected?: boolean }) {
           >
             พิมพ์ QR
           </Link>
+          <Link
+            href="/admin"
+            className="hidden rounded-full px-4 py-2 text-slate-500 hover:text-white sm:inline"
+          >
+            แอดมิน
+          </Link>
           {connected !== undefined && (
             <span
               className={`hidden items-center gap-2 rounded-full px-3 py-2 text-xs sm:inline-flex ${

@@ -28,6 +28,12 @@ export const STATUS_COPY: Record<
     badge: "bg-amber-400/15 text-amber-200 ring-1 ring-amber-400/35",
     glow: "shadow-[0_0_24px_-8px_rgba(251,191,36,0.5)]",
   },
+  out_of_order: {
+    th: "เครื่องเสีย / ปิดใช้",
+    en: "Out of order",
+    badge: "bg-rose-400/15 text-rose-200 ring-1 ring-rose-400/35",
+    glow: "shadow-[0_0_24px_-8px_rgba(251,113,133,0.45)]",
+  },
 };
 
 export function remainingLabel(machine: Machine, now = Date.now()) {

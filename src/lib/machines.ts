@@ -176,23 +176,27 @@ export async function joinQueue() {
   const existing = await getDocs(
     query(collection(db, TICKETS_COLLECTION), where("dateKey", "==", dateKey)),
   );
-  const open = existing.docs
-    .map((item) => ticketFromDoc(item.id, item.data()))
-    .find(
-      (t) =>
-        t.uid === user.uid &&
-        (t.status === "waiting" || t.status === "called" || t.status === "in_use"),
-    );
+  const todayTickets = existing.docs.map((item) => ticketFromDoc(item.id, item.data()));
+  const open = todayTickets.find(
+    (t) =>
+      t.uid === user.uid &&
+      (t.status === "waiting" || t.status === "called" || t.status === "in_use"),
+  );
   if (open) return { ticketId: open.id, number: open.number, dateKey };
 
   const machines = (await getDocs(collection(db, MACHINES_COLLECTION))).docs.map((item) =>
     machineFromDoc(item.id, item.data()),
   );
-  const canWalkIn = machines.some(
-    (m) =>
-      m.status === "available" ||
-      (m.status === "reserved" && m.ownerUid === user.uid),
+  const hasWaiters = todayTickets.some(
+    (t) => t.status === "waiting" || t.status === "called",
   );
+  const canWalkIn =
+    !hasWaiters &&
+    machines.some(
+      (m) =>
+        m.status === "available" ||
+        (m.status === "reserved" && m.ownerUid === user.uid),
+    );
   if (canWalkIn) throw new Error("MACHINES_FREE");
   return nextDailyNumber(user.uid);
 }
@@ -207,13 +211,27 @@ export async function startMachine(id: string, minutes: 30 | 45 | "demo" = 30) {
   const now = Date.now();
   const warnLead = Math.min(5 * 60 * 1000, Math.max(5000, durationMs * 0.25));
 
+  const todaySnap = await getDocs(
+    query(collection(db, TICKETS_COLLECTION), where("dateKey", "==", dateKey)),
+  );
+  const waiters = todaySnap.docs
+    .map((item) => ticketFromDoc(item.id, item.data()))
+    .filter((t) => t.status === "waiting" || t.status === "called")
+    .sort((a, b) => a.number - b.number);
+  const head = waiters[0];
+
   const result = await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error("MACHINE_NOT_FOUND");
     const data = snap.data();
     const rawStatus = String(data.status ?? "available");
+    if (rawStatus === "out_of_order") throw new Error("MACHINE_BROKEN");
     const reservedForMe =
       rawStatus === "reserved" && data.ownerUid === user.uid;
+
+    if (head && head.uid !== user.uid && !reservedForMe) {
+      throw new Error("NOT_YOUR_TURN");
+    }
 
     if (rawStatus !== "available" && !reservedForMe) {
       throw new Error("MACHINE_BUSY");
@@ -313,5 +331,30 @@ export async function collectClothes(id: string) {
   });
 
   writeMyCycle(null);
+  await fetch("/api/queue/dispatch", { method: "POST" }).catch(() => undefined);
+}
+
+export async function cancelOwnTicket(ticketId: string) {
+  const user = await ensureAnonymousUser();
+  const db = getFirebaseDb();
+  const ref = doc(db, TICKETS_COLLECTION, ticketId);
+  await runTransaction(db, async (tx) => {
+    const snap = await tx.get(ref);
+    if (!snap.exists()) throw new Error("TICKET_NOT_FOUND");
+    const ticket = ticketFromDoc(ticketId, snap.data());
+    if (ticket.uid !== user.uid) throw new Error("NOT_OWNER");
+    if (ticket.status !== "waiting" && ticket.status !== "called") {
+      throw new Error("CANNOT_CANCEL");
+    }
+    tx.update(ref, { status: "cancelled" });
+    if (ticket.status === "called" && ticket.machineId) {
+      tx.update(doc(db, MACHINES_COLLECTION, ticket.machineId), {
+        status: "available",
+        ownerUid: null,
+        ticketNumber: null,
+        reservedUntil: null,
+      });
+    }
+  });
   await fetch("/api/queue/dispatch", { method: "POST" }).catch(() => undefined);
 }
