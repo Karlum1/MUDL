@@ -1,5 +1,6 @@
 "use client";
 
+import { actionErrorMessage } from "@/lib/errors";
 import { TicketCard } from "@/components/TicketCard";
 import { machineAction } from "@/hooks/useMachineLive";
 import { registerWebPush } from "@/lib/session";
@@ -39,12 +40,7 @@ export function NotificationDock({
     try {
       await machineAction("queue", "queue");
     } catch (err) {
-      const code = err instanceof Error ? err.message : "FAILED";
-      setQueueError(
-        code === "MACHINES_FREE"
-          ? "ยังมีเครื่องว่าง ไปเริ่มซักได้เลย ไม่ต้องเก็บบัตรคิว"
-          : "เก็บบัตรคิวไม่สำเร็จ ลองอีกครั้ง",
-      );
+      setQueueError(actionErrorMessage(err));
     } finally {
       setPending(false);
     }

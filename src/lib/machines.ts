@@ -3,9 +3,7 @@ import {
   collection,
   doc,
   getDocs,
-  limit,
   onSnapshot,
-  orderBy,
   query,
   runTransaction,
   where,
@@ -133,13 +131,14 @@ export function subscribeTodayTickets(
   const ticketsQuery = query(
     collection(db, TICKETS_COLLECTION),
     where("dateKey", "==", dateKey),
-    orderBy("number", "asc"),
-    limit(200),
   );
   return onSnapshot(
     ticketsQuery,
     (snapshot) => {
-      onNext(snapshot.docs.map((item) => ticketFromDoc(item.id, item.data())));
+      const tickets = snapshot.docs
+        .map((item) => ticketFromDoc(item.id, item.data()))
+        .sort((a, b) => a.number - b.number);
+      onNext(tickets);
     },
     (error) => onError?.(error),
   );
@@ -175,16 +174,15 @@ export async function joinQueue() {
   const db = getFirebaseDb();
   const dateKey = bangkokDateKey();
   const existing = await getDocs(
-    query(
-      collection(db, TICKETS_COLLECTION),
-      where("dateKey", "==", dateKey),
-      where("uid", "==", user.uid),
-      limit(10),
-    ),
+    query(collection(db, TICKETS_COLLECTION), where("dateKey", "==", dateKey)),
   );
   const open = existing.docs
     .map((item) => ticketFromDoc(item.id, item.data()))
-    .find((t) => t.status === "waiting" || t.status === "called" || t.status === "in_use");
+    .find(
+      (t) =>
+        t.uid === user.uid &&
+        (t.status === "waiting" || t.status === "called" || t.status === "in_use"),
+    );
   if (open) return { ticketId: open.id, number: open.number, dateKey };
 
   const machines = (await getDocs(collection(db, MACHINES_COLLECTION))).docs.map((item) =>
@@ -204,64 +202,24 @@ export async function startMachine(id: string, minutes: 30 | 45 | "demo" = 30) {
   const db = getFirebaseDb();
   const ref = doc(db, MACHINES_COLLECTION, id);
   const dateKey = bangkokDateKey();
-  const waitingSnap = await getDocs(
-    query(
-      collection(db, TICKETS_COLLECTION),
-      where("dateKey", "==", dateKey),
-      where("status", "in", ["waiting", "called"]),
-      orderBy("number", "asc"),
-      limit(8),
-    ),
-  );
-  const waiting = waitingSnap.docs.map((item) => ticketFromDoc(item.id, item.data()));
-  const head = waiting[0];
-  if (head && head.uid !== user.uid) {
-    throw new Error("NOT_YOUR_TURN");
-  }
-  const mineWaiting = waiting.find((t) => t.uid === user.uid) ?? null;
-  const newTicketRef = mineWaiting ? null : doc(collection(db, TICKETS_COLLECTION));
+  const durationMs =
+    minutes === "demo" ? DEMO_SECONDS * 1000 : minutes * 60 * 1000;
+  const now = Date.now();
+  const warnLead = Math.min(5 * 60 * 1000, Math.max(5000, durationMs * 0.25));
 
   const result = await runTransaction(db, async (tx) => {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error("MACHINE_NOT_FOUND");
-    const current = machineFromDoc(id, snap.data());
-
+    const data = snap.data();
+    const rawStatus = String(data.status ?? "available");
     const reservedForMe =
-      current.status === "reserved" &&
-      current.ownerUid === user.uid &&
-      (!current.reservedUntil || Date.now() < current.reservedUntil);
-    if (current.status !== "available" && !reservedForMe) {
+      rawStatus === "reserved" && data.ownerUid === user.uid;
+
+    if (rawStatus !== "available" && !reservedForMe) {
       throw new Error("MACHINE_BUSY");
     }
 
-    let ticketNumber = mineWaiting?.number;
-    if (!ticketNumber && newTicketRef) {
-      const counterRef = doc(db, COUNTERS_COLLECTION, dateKey);
-      const counter = await tx.get(counterRef);
-      ticketNumber = counter.exists() ? Number(counter.data().nextNumber ?? 0) + 1 : 1;
-      tx.set(counterRef, { dateKey, nextNumber: ticketNumber }, { merge: true });
-      tx.set(newTicketRef, {
-        dateKey,
-        number: ticketNumber,
-        uid: user.uid,
-        status: "in_use",
-        machineId: id,
-        createdAt: Timestamp.now(),
-        calledAt: null,
-      });
-    } else if (mineWaiting) {
-      tx.update(doc(db, TICKETS_COLLECTION, mineWaiting.id), {
-        status: "in_use",
-        machineId: id,
-      });
-    }
-
-    const durationMs =
-      minutes === "demo" ? DEMO_SECONDS * 1000 : minutes * 60 * 1000;
-    const now = Date.now();
-    const warnLead = Math.min(5 * 60 * 1000, Math.max(5000, durationMs * 0.25));
     const finishTime = Timestamp.fromMillis(now + durationMs);
-
     tx.update(ref, {
       status: "in_use",
       finishTime,
@@ -269,22 +227,35 @@ export async function startMachine(id: string, minutes: 30 | 45 | "demo" = 30) {
       almostAt: Timestamp.fromMillis(now + durationMs - warnLead),
       almostAlertSent: false,
       ownerUid: user.uid,
-      ticketNumber,
       reservedUntil: null,
     });
-
-    return { ticketNumber: ticketNumber as number, finishTime: finishTime.toMillis() };
+    return { finishTime: finishTime.toMillis() };
   });
+
+  let ticketNumber = 0;
+  try {
+    const issued = await nextDailyNumber(user.uid);
+    ticketNumber = issued.number;
+    await runTransaction(db, async (tx) => {
+      tx.update(doc(db, TICKETS_COLLECTION, issued.ticketId), {
+        status: "in_use",
+        machineId: id,
+      });
+      tx.update(ref, { ticketNumber });
+    });
+  } catch {
+    /* machine already started; ticket is optional */
+  }
 
   writeMyCycle({
     uid: user.uid,
     machineId: id,
-    ticketNumber: result.ticketNumber,
+    ticketNumber,
     finishTime: result.finishTime,
     startedAt: Date.now(),
   });
 
-  return result;
+  return { ticketNumber, finishTime: result.finishTime };
 }
 
 export async function markMachineFinished(id: string) {

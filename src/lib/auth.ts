@@ -12,8 +12,21 @@ export async function ensureAnonymousUser(): Promise<User> {
   }
   const auth = getAuth(getFirebaseApp());
   if (auth.currentUser) return auth.currentUser;
-  const result = await signInAnonymously(auth);
-  return result.user;
+  try {
+    const result = await signInAnonymously(auth);
+    return result.user;
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error
+      ? String(error.code)
+      : "";
+    if (
+      code.includes("operation-not-allowed") ||
+      code.includes("admin-restricted-operation")
+    ) {
+      throw new Error("AUTH_DISABLED");
+    }
+    throw error;
+  }
 }
 
 export function subscribeAuth(listener: (user: User | null) => void) {

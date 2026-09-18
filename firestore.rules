@@ -5,6 +5,18 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isOwner() {
+      return !('ownerUid' in resource.data)
+        || resource.data.ownerUid == null
+        || resource.data.ownerUid == request.auth.uid;
+    }
+
+    function cycleEnded() {
+      return !('finishTime' in resource.data)
+        || resource.data.finishTime == null
+        || resource.data.finishTime <= request.time;
+    }
+
     match /machines/{machineId} {
       allow read: if true;
       allow create: if isAuth()
@@ -13,21 +25,22 @@ service cloud.firestore {
 
       allow update: if isAuth() && (
         (
-          (resource.data.status == 'available' || resource.data.status == 'reserved')
+          resource.data.status in ['available', 'reserved']
           && request.resource.data.status == 'in_use'
           && request.resource.data.ownerUid == request.auth.uid
         )
         ||
         (
           resource.data.status == 'in_use'
-          && resource.data.ownerUid == request.auth.uid
+          && isOwner()
           && request.resource.data.status in ['in_use', 'finished']
         )
         ||
         (
-          resource.data.status == 'finished'
-          && resource.data.ownerUid == request.auth.uid
+          isOwner()
           && request.resource.data.status == 'available'
+          && resource.data.status in ['finished', 'in_use', 'available']
+          && (resource.data.status != 'in_use' || cycleEnded())
         )
       );
     }
