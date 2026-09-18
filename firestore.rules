@@ -1,0 +1,10 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Demo dorm board: anonymous students can read/write machine status.
+    // Tighten this before a public production deploy.
+    match /machines/{machineId} {
+      allow read, write: if true;
+    }
+  }
+}
