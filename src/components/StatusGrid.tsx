@@ -3,7 +3,13 @@
 import { MachineCard } from "@/components/MachineCard";
 import type { Machine } from "@/lib/types";
 
-export function StatusGrid({ machines }: { machines: Machine[] }) {
+export function StatusGrid({
+  machines,
+  uid,
+}: {
+  machines: Machine[];
+  uid?: string | null;
+}) {
   const floors = [1, 2];
 
   if (machines.length === 0) {
@@ -25,7 +31,11 @@ export function StatusGrid({ machines }: { machines: Machine[] }) {
             </h2>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {floorMachines.map((machine) => (
-                <MachineCard key={machine.id} machine={machine} />
+                <MachineCard
+                  key={machine.id}
+                  machine={machine}
+                  isMine={Boolean(uid && machine.ownerUid === uid)}
+                />
               ))}
             </div>
           </section>

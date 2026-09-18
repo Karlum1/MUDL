@@ -4,9 +4,11 @@ import { NotificationDock } from "@/components/NotificationDock";
 import { SiteHeader } from "@/components/SiteHeader";
 import { StatusGrid } from "@/components/StatusGrid";
 import { useMachineLive } from "@/hooks/useMachineLive";
+import Link from "next/link";
 
 export default function HomePage() {
-  const { machines, alerts, connected, configured, error } = useMachineLive();
+  const { machines, alerts, connected, configured, error, uid, myTickets } =
+    useMachineLive();
   const available = machines.filter((m) => m.status === "available").length;
 
   return (
@@ -21,7 +23,12 @@ export default function HomePage() {
           <p className="mt-3 max-w-xl text-slate-400">
             {machines.length === 0
               ? "รอข้อมูลจาก Firestore"
-              : `ว่าง ${available} จาก ${machines.length} เครื่อง · กดการ์ดหรือสแกน QR เพื่อเริ่มจับเวลาทันที`}
+              : `ว่าง ${available} จาก ${machines.length} เครื่อง · เลขคิวนับคนใช้ทั้งวัน (รีเซ็ตเที่ยงคืนตามเวลาไทย)`}
+          </p>
+          <p className="mt-2 text-sm">
+            <Link href="/board" className="text-cyan-300 hover:text-cyan-200">
+              เปิดจอแสดงคิวสำหรับห้องซักผ้า →
+            </Link>
           </p>
 
           {!configured && (
@@ -29,9 +36,7 @@ export default function HomePage() {
               <p className="font-semibold">ยังไม่ได้ตั้งค่า Firebase</p>
               <p className="mt-2 text-amber-100/80">
                 คัดลอก <code className="font-mono text-amber-50">.env.example</code> เป็น{" "}
-                <code className="font-mono text-amber-50">.env.local</code> แล้วใส่ค่า{" "}
-                <code className="font-mono text-amber-50">NEXT_PUBLIC_FIREBASE_*</code> จาก
-                Firebase Console จากนั้นรีสตาร์ท <code className="font-mono">npm run dev</code>
+                <code className="font-mono text-amber-50">.env.local</code>
               </p>
             </div>
           )}
@@ -43,11 +48,11 @@ export default function HomePage() {
           )}
 
           <div className="mt-8">
-            <StatusGrid machines={machines} />
+            <StatusGrid machines={machines} uid={uid} />
           </div>
         </div>
         <div className="w-full shrink-0 lg:w-80">
-          <NotificationDock alerts={alerts} />
+          <NotificationDock alerts={alerts} tickets={myTickets} uid={uid} />
         </div>
       </main>
     </div>

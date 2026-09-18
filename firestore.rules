@@ -1,10 +1,58 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Demo dorm board: anonymous students can read/write machine status.
-    // Tighten this before a public production deploy.
+    function isAuth() {
+      return request.auth != null;
+    }
+
     match /machines/{machineId} {
-      allow read, write: if true;
+      allow read: if true;
+      allow create: if isAuth()
+        && machineId.matches('wm-0[1-6]')
+        && request.resource.data.status == 'available';
+
+      allow update: if isAuth() && (
+        (
+          (resource.data.status == 'available' || resource.data.status == 'reserved')
+          && request.resource.data.status == 'in_use'
+          && request.resource.data.ownerUid == request.auth.uid
+        )
+        ||
+        (
+          resource.data.status == 'in_use'
+          && resource.data.ownerUid == request.auth.uid
+          && request.resource.data.status in ['in_use', 'finished']
+        )
+        ||
+        (
+          resource.data.status == 'finished'
+          && resource.data.ownerUid == request.auth.uid
+          && request.resource.data.status == 'available'
+        )
+      );
+    }
+
+    match /counters/{dateKey} {
+      allow read: if true;
+      allow create: if isAuth() && request.resource.data.nextNumber == 1;
+      allow update: if isAuth()
+        && request.resource.data.nextNumber == resource.data.nextNumber + 1;
+    }
+
+    match /tickets/{ticketId} {
+      allow read: if true;
+      allow create: if isAuth()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.status in ['waiting', 'in_use'];
+      allow update: if isAuth()
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid;
+    }
+
+    match /pushTokens/{token} {
+      allow read: if false;
+      allow create, update: if isAuth() && request.resource.data.uid == request.auth.uid;
+      allow delete: if isAuth() && resource.data.uid == request.auth.uid;
     }
   }
 }

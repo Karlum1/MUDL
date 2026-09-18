@@ -8,7 +8,7 @@ import { useParams } from "next/navigation";
 
 export default function MachinePage() {
   const params = useParams<{ id: string }>();
-  const { machines, connected, error } = useMachineLive();
+  const { machines, connected, error, uid } = useMachineLive();
   const machine = machines.find((item) => item.id === params.id);
 
   return (
@@ -28,7 +28,7 @@ export default function MachinePage() {
                 : "ไม่พบเครื่องนี้ ตรวจ QR อีกครั้ง"}
             </div>
           ) : (
-            <MachineActions machine={machine} />
+            <MachineActions machine={machine} uid={uid} />
           )}
         </div>
       </main>

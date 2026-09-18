@@ -10,6 +10,12 @@ export const STATUS_COPY: Record<
     badge: "bg-emerald-400/15 text-emerald-300 ring-1 ring-emerald-400/30",
     glow: "shadow-[0_0_24px_-8px_rgba(52,211,153,0.55)]",
   },
+  reserved: {
+    th: "จองคิวแล้ว",
+    en: "Reserved",
+    badge: "bg-violet-400/15 text-violet-200 ring-1 ring-violet-400/30",
+    glow: "shadow-[0_0_24px_-8px_rgba(167,139,250,0.45)]",
+  },
   in_use: {
     th: "กำลังใช้งาน / เต็ม",
     en: "In Use / Full",
