@@ -16,7 +16,6 @@ export async function POST(request: Request) {
     pin?: string;
     action?: string;
     machineId?: string;
-    ticketId?: string;
     note?: string;
     messageTh?: string;
     push?: boolean;
@@ -45,7 +44,6 @@ export async function POST(request: Request) {
     const result = await runAdminCommand({
       action: body.action,
       machineId: body.machineId,
-      ticketId: body.ticketId,
       note: body.note,
       messageTh: body.messageTh,
       push: Boolean(body.push),
