@@ -1,5 +1,10 @@
 import { getFirebaseApp, isFirebaseConfigured } from "@/lib/firebase";
-import { MY_CYCLE_KEY, type MyCycle } from "@/lib/types";
+import {
+  MY_CYCLE_KEY,
+  SCAN_SESSION_PREFIX,
+  SCAN_TTL_MS,
+  type MyCycle,
+} from "@/lib/types";
 import { getMessaging, getToken, isSupported, onMessage } from "firebase/messaging";
 import { doc, setDoc } from "firebase/firestore";
 import { getFirebaseDb } from "@/lib/firebase";
@@ -21,6 +26,19 @@ export function writeMyCycle(cycle: MyCycle | null) {
     return;
   }
   localStorage.setItem(MY_CYCLE_KEY, JSON.stringify(cycle));
+}
+
+export function grantMachineScan(machineId: string) {
+  if (typeof window === "undefined") return;
+  sessionStorage.setItem(`${SCAN_SESSION_PREFIX}${machineId}`, String(Date.now()));
+}
+
+export function hasValidMachineScan(machineId: string) {
+  if (typeof window === "undefined") return false;
+  const raw = sessionStorage.getItem(`${SCAN_SESSION_PREFIX}${machineId}`);
+  const grantedAt = Number(raw);
+  if (!Number.isFinite(grantedAt) || grantedAt <= 0) return false;
+  return Date.now() - grantedAt < SCAN_TTL_MS;
 }
 
 export async function registerWebPush(uid: string) {

@@ -13,10 +13,12 @@ Anonymous QR laundry board: live machine status, daily queue tickets, a TV board
    - `FIREBASE_CLIENT_EMAIL` + `FIREBASE_PRIVATE_KEY` จาก service account
    - `CRON_SECRET` แล้วตั้ง cron เรียก `GET /api/cron/tick` ทุกนาที (Vercel Hobby จำกัด cron เป็นรายวัน — ใช้ [cron-job.org](https://cron-job.org) หรือ Vercel Pro)
 
-เลขคิวนับคนใช้ทั้งวันตามเวลาไทย (`Asia/Bangkok`) แล้วเริ่มใหม่วันถัดไป. จอคิวอยู่ที่ `/board`.
+เลขคิวนับคนใช้ทั้งวันตามเวลาไทย (`Asia/Bangkok`) แล้วเริ่มใหม่วันถัดไป. จอคิวอยู่ที่ `/board`. หน้าผู้ดูแลอยู่ที่ `/admin` (รหัส `ADMIN_PIN` หรือ `CRON_SECRET`).
 
 ## Scripts
 
 ```bash
 npm run dev
 ```
+
+บน Windows + OneDrive สคริปต์นี้ใช้ Webpack (`next dev --webpack`) เพราะ Turbopack สร้าง junction ของ `firebase-admin` ใน `.next` ไม่ได้เมื่อ path มีภาษาไทยหรือไฟล์ถูก OneDrive ล็อก.

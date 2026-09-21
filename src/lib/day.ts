@@ -13,3 +13,15 @@ export function bangkokDateLabel(dateKey: string) {
   const [year, month, day] = dateKey.split("-").map(Number);
   return `${day}/${month}/${year}`;
 }
+
+export function bangkokHour(now = new Date()) {
+  const hourPart = new Intl.DateTimeFormat("en-GB", {
+    timeZone: BANGKOK,
+    hour: "2-digit",
+    hour12: false,
+  })
+    .formatToParts(now)
+    .find((part) => part.type === "hour")?.value;
+  const hour = Number(hourPart ?? 0);
+  return hour === 24 ? 0 : hour;
+}

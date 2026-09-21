@@ -7,8 +7,7 @@ import { useMachineLive } from "@/hooks/useMachineLive";
 import Link from "next/link";
 
 export default function HomePage() {
-  const { machines, alerts, connected, configured, error, uid, myTickets } =
-    useMachineLive();
+  const { machines, alerts, connected, configured, error, uid } = useMachineLive();
   const available = machines.filter((m) => m.status === "available").length;
 
   return (
@@ -16,18 +15,18 @@ export default function HomePage() {
       <SiteHeader connected={connected} />
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8 lg:flex-row">
         <div className="flex-1">
-          <p className="text-sm text-slate-400">ไม่ต้องสมัคร ไม่ต้องใส่ชื่อ · Anonymous</p>
+          <p className="text-sm text-slate-400">ไม่ต้องสมัคร · สแกน QR ที่เครื่องเพื่อเริ่มซัก</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
             สถานะเครื่องซักผ้าหอพัก
           </h1>
           <p className="mt-3 max-w-xl text-slate-400">
             {machines.length === 0
               ? "รอข้อมูลจาก Firestore"
-              : `ว่าง ${available} จาก ${machines.length} เครื่อง · เลขคิวนับคนใช้ทั้งวัน (รีเซ็ตเที่ยงคืนตามเวลาไทย)`}
+              : `ว่าง ${available} จาก ${machines.length} เครื่อง · เครื่องหมุนเมื่อกำลังซัก และเด้งเมื่อผ้าเสร็จ`}
           </p>
           <p className="mt-2 text-sm">
             <Link href="/board" className="text-cyan-300 hover:text-cyan-200">
-              เปิดจอแสดงคิวสำหรับห้องซักผ้า →
+              เปิดจอสถานะสำหรับห้องซักผ้า →
             </Link>
           </p>
 
@@ -52,7 +51,7 @@ export default function HomePage() {
           </div>
         </div>
         <div className="w-full shrink-0 lg:w-80">
-          <NotificationDock alerts={alerts} tickets={myTickets} uid={uid} />
+          <NotificationDock alerts={alerts} uid={uid} />
         </div>
       </main>
     </div>

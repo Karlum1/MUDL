@@ -28,6 +28,9 @@ service cloud.firestore {
           resource.data.status in ['available', 'reserved']
           && request.resource.data.status == 'in_use'
           && request.resource.data.ownerUid == request.auth.uid
+          && request.resource.data.ownerName is string
+          && request.resource.data.ownerName.size() > 0
+          && request.resource.data.ownerName.size() <= 24
         )
         ||
         (
@@ -66,6 +69,22 @@ service cloud.firestore {
       allow read: if false;
       allow create, update: if isAuth() && request.resource.data.uid == request.auth.uid;
       allow delete: if isAuth() && resource.data.uid == request.auth.uid;
+    }
+
+    match /announcements/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /maintenanceLogs/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    match /usageEvents/{id} {
+      allow read: if true;
+      allow create: if isAuth();
+      allow update, delete: if false;
     }
   }
 }

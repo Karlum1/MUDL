@@ -20,3 +20,75 @@ body {
   color: var(--foreground);
   font-family: var(--font-sans), sans-serif;
 }
+
+@keyframes washer-drum-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes washer-hop {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  40% {
+    transform: translateY(-10px) rotate(3deg);
+  }
+  70% {
+    transform: translateY(-4px) rotate(-1deg);
+  }
+}
+
+@keyframes washer-breathe {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-2px);
+  }
+}
+
+@keyframes washer-sparkle {
+  0%,
+  100% {
+    transform: scale(0.8) rotate(-8deg);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.2) rotate(8deg);
+    opacity: 1;
+  }
+}
+
+.washer-spinning .washer-drum {
+  transform-box: view-box;
+  transform-origin: 40px 56px;
+  animation: washer-drum-spin 1.15s linear infinite;
+}
+
+.washer-spinning .washer-glass {
+  fill: #155e75;
+}
+
+.washer-bounce {
+  animation: washer-hop 0.7s ease-in-out infinite;
+  transform-origin: 50% 90%;
+}
+
+.washer-idle {
+  animation: washer-breathe 2.8s ease-in-out infinite;
+}
+
+.washer-sad {
+  transform: rotate(-8deg);
+  filter: grayscale(0.35);
+}
+
+.washer-sparkle {
+  animation: washer-sparkle 0.8s ease-in-out infinite;
+}

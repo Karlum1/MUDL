@@ -9,7 +9,7 @@ export function SiteHeader({ connected }: { connected?: boolean }) {
             Dorm Laundry
           </p>
           <p className="truncate text-lg font-semibold text-white">
-            คิวเครื่องซักผ้า
+            สถานะเครื่องซักผ้า
           </p>
         </Link>
         <nav className="flex items-center gap-2 text-sm">
@@ -23,7 +23,7 @@ export function SiteHeader({ connected }: { connected?: boolean }) {
             href="/board"
             className="hidden rounded-full px-4 py-2 text-slate-300 hover:text-white sm:inline"
           >
-            จอคิว
+            จอสถานะ
           </Link>
           <Link
             href="/qrs"

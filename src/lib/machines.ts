@@ -1,5 +1,6 @@
 import {
   Timestamp,
+  addDoc,
   collection,
   doc,
   getDocs,
@@ -12,18 +13,25 @@ import {
   type Unsubscribe,
 } from "firebase/firestore";
 import { ensureAnonymousUser } from "@/lib/auth";
-import { bangkokDateKey } from "@/lib/day";
+import { bangkokDateKey, bangkokHour } from "@/lib/day";
 import {
-  COUNTERS_COLLECTION,
   MACHINES_COLLECTION,
-  TICKETS_COLLECTION,
+  USAGE_EVENTS_COLLECTION,
+  ANNOUNCEMENTS_COLLECTION,
+  MAINTENANCE_LOGS_COLLECTION,
   getFirebaseDb,
 } from "@/lib/firebase";
 import { writeMyCycle } from "@/lib/session";
-import type { Machine, MachineStatus, QueueTicket, TicketStatus } from "@/lib/types";
+import type {
+  Announcement,
+  Machine,
+  MachineStatus,
+  MaintenanceLog,
+} from "@/lib/types";
 
 const DEMO_SECONDS = 20;
-export const RESERVE_MS = 5 * 60 * 1000;
+export const MAX_OWNER_NAME = 24;
+export const ANON_OWNER_NAME = "ไม่ระบุตัวตน";
 
 export const SEED_MACHINES = [1, 2, 3, 4, 5, 6].map((n) => ({
   id: `wm-${String(n).padStart(2, "0")}`,
@@ -48,7 +56,7 @@ export function machineFromDoc(id: string, data: DocumentData): Machine {
   let status = rawStatus;
   if (rawStatus === "in_use" && finishTime && Date.now() >= finishTime) {
     status = "finished";
-  } else if (rawStatus === "reserved" && reservedUntil && Date.now() >= reservedUntil) {
+  } else if (rawStatus === "reserved") {
     status = "available";
   }
 
@@ -63,21 +71,9 @@ export function machineFromDoc(id: string, data: DocumentData): Machine {
     almostAt,
     almostAlertSent: Boolean(data.almostAlertSent),
     ownerUid: typeof data.ownerUid === "string" ? data.ownerUid : null,
-    ticketNumber: typeof data.ticketNumber === "number" ? data.ticketNumber : null,
+    ownerName: typeof data.ownerName === "string" ? data.ownerName : null,
     reservedUntil,
-  };
-}
-
-export function ticketFromDoc(id: string, data: DocumentData): QueueTicket {
-  return {
-    id,
-    dateKey: String(data.dateKey ?? ""),
-    number: Number(data.number ?? 0),
-    uid: String(data.uid ?? ""),
-    status: (data.status as TicketStatus) ?? "waiting",
-    machineId: typeof data.machineId === "string" ? data.machineId : null,
-    createdAt: millisFromTimestamp(data.createdAt) ?? 0,
-    calledAt: millisFromTimestamp(data.calledAt),
+    maintenanceNote: typeof data.maintenanceNote === "string" ? data.maintenanceNote : null,
   };
 }
 
@@ -98,8 +94,9 @@ export async function seedMachinesIfEmpty() {
       almostAt: null,
       almostAlertSent: false,
       ownerUid: null,
-      ticketNumber: null,
+      ownerName: null,
       reservedUntil: null,
+      maintenanceNote: null,
     });
   }
   await batch.commit();
@@ -122,86 +119,102 @@ export function subscribeMachines(
   );
 }
 
-export function subscribeTodayTickets(
-  onNext: (tickets: QueueTicket[]) => void,
+export function subscribeAnnouncements(
+  onNext: (items: Announcement[]) => void,
   onError?: (error: Error) => void,
 ): Unsubscribe {
   const db = getFirebaseDb();
-  const dateKey = bangkokDateKey();
-  const ticketsQuery = query(
-    collection(db, TICKETS_COLLECTION),
-    where("dateKey", "==", dateKey),
-  );
   return onSnapshot(
-    ticketsQuery,
+    collection(db, ANNOUNCEMENTS_COLLECTION),
     (snapshot) => {
-      const tickets = snapshot.docs
-        .map((item) => ticketFromDoc(item.id, item.data()))
-        .sort((a, b) => a.number - b.number);
-      onNext(tickets);
+      const items = snapshot.docs
+        .map((item) => {
+          const data = item.data();
+          return {
+            id: item.id,
+            messageTh: String(data.messageTh ?? ""),
+            createdAt: millisFromTimestamp(data.createdAt) ?? 0,
+            active: data.active !== false,
+          } satisfies Announcement;
+        })
+        .filter((item) => item.active && item.messageTh)
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, 5);
+      onNext(items);
     },
     (error) => onError?.(error),
   );
 }
 
-async function nextDailyNumber(uid: string) {
+export function subscribeMaintenanceLogs(
+  onNext: (items: MaintenanceLog[]) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe {
   const db = getFirebaseDb();
-  const dateKey = bangkokDateKey();
-  const counterRef = doc(db, COUNTERS_COLLECTION, dateKey);
-  const ticketRef = doc(collection(db, TICKETS_COLLECTION));
-
-  const number = await runTransaction(db, async (tx) => {
-    const counter = await tx.get(counterRef);
-    const next = counter.exists() ? Number(counter.data().nextNumber ?? 0) + 1 : 1;
-    tx.set(counterRef, { dateKey, nextNumber: next }, { merge: true });
-    tx.set(ticketRef, {
-      dateKey,
-      number: next,
-      uid,
-      status: "waiting",
-      machineId: null,
-      createdAt: Timestamp.now(),
-      calledAt: null,
-    });
-    return next;
-  });
-
-  return { ticketId: ticketRef.id, number, dateKey };
+  return onSnapshot(
+    collection(db, MAINTENANCE_LOGS_COLLECTION),
+    (snapshot) => {
+      const items = snapshot.docs
+        .map((item) => {
+          const data = item.data();
+          return {
+            id: item.id,
+            machineId: String(data.machineId ?? ""),
+            action: String(data.action ?? ""),
+            note: String(data.note ?? ""),
+            createdAt: millisFromTimestamp(data.createdAt) ?? 0,
+          } satisfies MaintenanceLog;
+        })
+        .sort((a, b) => b.createdAt - a.createdAt)
+        .slice(0, 30);
+      onNext(items);
+    },
+    (error) => onError?.(error),
+  );
 }
 
-export async function joinQueue() {
-  const user = await ensureAnonymousUser();
+export function subscribeUsageHours(
+  onNext: (hours: number[]) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe {
   const db = getFirebaseDb();
   const dateKey = bangkokDateKey();
-  const existing = await getDocs(
-    query(collection(db, TICKETS_COLLECTION), where("dateKey", "==", dateKey)),
+  const usageQuery = query(
+    collection(db, USAGE_EVENTS_COLLECTION),
+    where("dateKey", "==", dateKey),
   );
-  const open = existing.docs
-    .map((item) => ticketFromDoc(item.id, item.data()))
-    .find(
-      (t) =>
-        t.uid === user.uid &&
-        (t.status === "waiting" || t.status === "called" || t.status === "in_use"),
-    );
-  if (open) return { ticketId: open.id, number: open.number, dateKey };
-
-  const machines = (await getDocs(collection(db, MACHINES_COLLECTION))).docs.map((item) =>
-    machineFromDoc(item.id, item.data()),
+  return onSnapshot(
+    usageQuery,
+    (snapshot) => {
+      const hours = Array.from({ length: 24 }, () => 0);
+      for (const item of snapshot.docs) {
+        const hour = Number(item.data().hour ?? 0);
+        if (hour >= 0 && hour <= 23) hours[hour] += 1;
+      }
+      onNext(hours);
+    },
+    (error) => onError?.(error),
   );
-  const canWalkIn = machines.some(
-    (m) =>
-      m.status === "available" ||
-      (m.status === "reserved" && m.ownerUid === user.uid),
-  );
-  if (canWalkIn) throw new Error("MACHINES_FREE");
-  return nextDailyNumber(user.uid);
 }
 
-export async function startMachine(id: string, minutes: 30 | 45 | "demo" = 30) {
+export function normalizeOwnerName(value: string) {
+  return value.trim().slice(0, MAX_OWNER_NAME) || ANON_OWNER_NAME;
+}
+
+export function displayOwnerName(name: string | null | undefined) {
+  const trimmed = name?.trim();
+  return trimmed || ANON_OWNER_NAME;
+}
+
+export async function startMachine(
+  id: string,
+  minutes: 30 | 45 | "demo" = 30,
+  ownerName: string,
+) {
+  const name = normalizeOwnerName(ownerName);
   const user = await ensureAnonymousUser();
   const db = getFirebaseDb();
   const ref = doc(db, MACHINES_COLLECTION, id);
-  const dateKey = bangkokDateKey();
   const durationMs =
     minutes === "demo" ? DEMO_SECONDS * 1000 : minutes * 60 * 1000;
   const now = Date.now();
@@ -212,10 +225,8 @@ export async function startMachine(id: string, minutes: 30 | 45 | "demo" = 30) {
     if (!snap.exists()) throw new Error("MACHINE_NOT_FOUND");
     const data = snap.data();
     const rawStatus = String(data.status ?? "available");
-    const reservedForMe =
-      rawStatus === "reserved" && data.ownerUid === user.uid;
-
-    if (rawStatus !== "available" && !reservedForMe) {
+    if (rawStatus === "maintenance") throw new Error("MACHINE_MAINTENANCE");
+    if (rawStatus !== "available" && rawStatus !== "reserved") {
       throw new Error("MACHINE_BUSY");
     }
 
@@ -227,35 +238,29 @@ export async function startMachine(id: string, minutes: 30 | 45 | "demo" = 30) {
       almostAt: Timestamp.fromMillis(now + durationMs - warnLead),
       almostAlertSent: false,
       ownerUid: user.uid,
+      ownerName: name,
       reservedUntil: null,
+      ticketNumber: null,
     });
     return { finishTime: finishTime.toMillis() };
   });
 
-  let ticketNumber = 0;
-  try {
-    const issued = await nextDailyNumber(user.uid);
-    ticketNumber = issued.number;
-    await runTransaction(db, async (tx) => {
-      tx.update(doc(db, TICKETS_COLLECTION, issued.ticketId), {
-        status: "in_use",
-        machineId: id,
-      });
-      tx.update(ref, { ticketNumber });
-    });
-  } catch {
-    /* machine already started; ticket is optional */
-  }
-
   writeMyCycle({
     uid: user.uid,
     machineId: id,
-    ticketNumber,
+    ownerName: name,
     finishTime: result.finishTime,
     startedAt: Date.now(),
   });
 
-  return { ticketNumber, finishTime: result.finishTime };
+  await addDoc(collection(db, USAGE_EVENTS_COLLECTION), {
+    machineId: id,
+    dateKey: bangkokDateKey(),
+    hour: bangkokHour(),
+    createdAt: Timestamp.now(),
+  }).catch(() => undefined);
+
+  return result;
 }
 
 export async function markMachineFinished(id: string) {
@@ -307,11 +312,11 @@ export async function collectClothes(id: string) {
       almostAt: null,
       almostAlertSent: false,
       ownerUid: null,
+      ownerName: null,
       ticketNumber: null,
       reservedUntil: null,
     });
   });
 
   writeMyCycle(null);
-  await fetch("/api/queue/dispatch", { method: "POST" }).catch(() => undefined);
 }

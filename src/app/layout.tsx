@@ -19,9 +19,9 @@ const notoThai = Noto_Sans_Thai({
 });
 
 export const metadata: Metadata = {
-  title: "คิวเครื่องซักผ้าหอพัก",
+  title: "สถานะเครื่องซักผ้าหอพัก",
   description:
-    "Dorm washing machine queue — anonymous QR start, live status, countdown, and alerts.",
+    "Dorm laundry board — scan QR at the machine to start a timer, live status, and alerts.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

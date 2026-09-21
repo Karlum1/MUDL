@@ -1,30 +1,29 @@
 "use client";
 
-import { actionErrorMessage } from "@/lib/errors";
-import { TicketCard } from "@/components/TicketCard";
-import { machineAction } from "@/hooks/useMachineLive";
+import { subscribeAnnouncements } from "@/lib/machines";
 import { registerWebPush } from "@/lib/session";
-import type { AlertEvent, QueueTicket } from "@/lib/types";
+import type { AlertEvent, Announcement } from "@/lib/types";
 import { useEffect, useState } from "react";
 
 export function NotificationDock({
   alerts,
-  tickets,
   uid,
 }: {
   alerts: AlertEvent[];
-  tickets: QueueTicket[];
   uid: string | null;
 }) {
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [enabled, setEnabled] = useState(false);
-  const [queueError, setQueueError] = useState<string | null>(null);
-  const [pending, setPending] = useState(false);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
 
   useEffect(() => {
     if (typeof Notification === "undefined") return;
     setPermission(Notification.permission);
     setEnabled(Notification.permission === "granted");
+  }, []);
+
+  useEffect(() => {
+    return subscribeAnnouncements(setAnnouncements, () => undefined);
   }, []);
 
   async function enablePush() {
@@ -34,34 +33,21 @@ export function NotificationDock({
     setEnabled(ok || Notification.permission === "granted");
   }
 
-  async function takeTicket() {
-    setPending(true);
-    setQueueError(null);
-    try {
-      await machineAction("queue", "queue");
-    } catch (err) {
-      setQueueError(actionErrorMessage(err));
-    } finally {
-      setPending(false);
-    }
-  }
-
   const latest = alerts.slice(0, 3);
-  const myOpen = tickets.filter(
-    (ticket) =>
-      ticket.status === "waiting" ||
-      ticket.status === "called" ||
-      ticket.status === "in_use",
-  )[0];
 
   return (
     <aside className="space-y-3">
-      {myOpen && <TicketCard ticket={myOpen} highlight />}
+      {announcements[0] && (
+        <div className="rounded-3xl border border-amber-300/30 bg-amber-300/10 p-5">
+          <p className="text-xs uppercase tracking-[0.18em] text-amber-200">ประกาศหอ</p>
+          <p className="mt-2 text-sm leading-6 text-amber-50">{announcements[0].messageTh}</p>
+        </div>
+      )}
 
       <div className="rounded-3xl border border-white/10 bg-slate-900/60 p-5">
         <h2 className="text-sm font-semibold text-white">แจ้งเตือน · Web Push</h2>
         <p className="mt-2 text-sm leading-6 text-slate-400">
-          เตือนใกล้เสร็จ ผ้าเสร็จ และถึงคิว แม้ปิดแอป (ต้องเปิด Web Push)
+          เตือนใกล้เสร็จและผ้าเสร็จ แม้ปิดแอป (ต้องเปิด Web Push)
         </p>
         <button
           type="button"
@@ -70,20 +56,11 @@ export function NotificationDock({
         >
           {enabled ? "เปิดการแจ้งเตือนแล้ว" : "เปิด Web Push บนเครื่องนี้"}
         </button>
-        <button
-          type="button"
-          disabled={pending || Boolean(myOpen)}
-          onClick={takeTicket}
-          className="mt-3 w-full rounded-2xl bg-white/10 px-4 py-3 text-sm font-semibold text-white ring-1 ring-white/15 hover:bg-white/15 disabled:opacity-50"
-        >
-          {myOpen ? "มีบัตรคิววันนี้แล้ว" : "เก็บบัตรคิว (เมื่อเครื่องเต็ม)"}
-        </button>
         {permission === "denied" && (
           <p className="mt-2 text-xs text-amber-200">
             เบราว์เซอร์บล็อกการแจ้งเตือน — ยังเห็นข้อความในแอปได้
           </p>
         )}
-        {queueError && <p className="mt-2 text-xs text-rose-300">{queueError}</p>}
       </div>
 
       <div className="space-y-2">

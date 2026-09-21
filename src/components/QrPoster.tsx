@@ -13,7 +13,9 @@ export function QrPoster({ machines }: { machines: Machine[] }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {machines.map((machine) => {
-        const payload = origin ? `${origin}/machine/${machine.id}` : machine.id;
+        const payload = origin
+          ? `${origin}/machine/${machine.id}?scan=1`
+          : machine.id;
         const src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(payload)}`;
         return (
           <figure

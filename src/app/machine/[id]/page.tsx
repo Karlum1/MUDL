@@ -3,13 +3,30 @@
 import { MachineActions } from "@/components/MachineActions";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useMachineLive } from "@/hooks/useMachineLive";
+import { grantMachineScan, hasValidMachineScan } from "@/lib/session";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 
-export default function MachinePage() {
+function MachinePageInner() {
   const params = useParams<{ id: string }>();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const { machines, connected, error, uid } = useMachineLive();
   const machine = machines.find((item) => item.id === params.id);
+  const [scanned, setScanned] = useState(false);
+
+  useEffect(() => {
+    const id = params.id;
+    if (!id) return;
+    if (searchParams.get("scan") === "1") {
+      grantMachineScan(id);
+      setScanned(true);
+      router.replace(`/machine/${id}`);
+      return;
+    }
+    setScanned(hasValidMachineScan(id));
+  }, [params.id, searchParams, router]);
 
   return (
     <div className="flex min-h-full flex-col">
@@ -28,10 +45,24 @@ export default function MachinePage() {
                 : "ไม่พบเครื่องนี้ ตรวจ QR อีกครั้ง"}
             </div>
           ) : (
-            <MachineActions machine={machine} uid={uid} />
+            <MachineActions machine={machine} uid={uid} scanned={scanned} />
           )}
         </div>
       </main>
     </div>
+  );
+}
+
+export default function MachinePage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-full items-center justify-center text-slate-400">
+          กำลังโหลดเครื่อง...
+        </div>
+      }
+    >
+      <MachinePageInner />
+    </Suspense>
   );
 }

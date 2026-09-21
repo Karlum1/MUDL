@@ -13,7 +13,7 @@ export default function QrCodesPage() {
       <main className="mx-auto w-full max-w-6xl px-4 py-8">
         <h1 className="text-3xl font-semibold text-white">QR สำหรับติดเครื่อง</h1>
         <p className="mt-2 max-w-2xl text-slate-400">
-          พิมพ์หน้านี้แล้วติดที่เครื่องซักผ้า แต่ละรหัสพานักศึกษาไปหน้าเริ่มซักของเครื่องนั้นทันที
+          พิมพ์หน้านี้แล้วติดที่เครื่องซักผ้า สแกนแล้วจะเปิดหน้าตั้งเวลา (ลิงก์มี ?scan=1)
         </p>
         <div className="mt-8">
           <QrPoster machines={machines} />

@@ -3,21 +3,18 @@
 import { isFirebaseConfigured } from "@/lib/firebase";
 import {
   collectClothes,
-  joinQueue,
   markAlmostAlertSent,
   markMachineFinished,
   seedMachinesIfEmpty,
   startMachine,
   subscribeMachines,
-  subscribeTodayTickets,
 } from "@/lib/machines";
-import type { AlertEvent, Machine, QueueTicket } from "@/lib/types";
+import type { AlertEvent, Machine } from "@/lib/types";
 import { useAnonymousSession } from "@/hooks/useAnonymousSession";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 type LiveState = {
   machines: Machine[];
-  tickets: QueueTicket[];
   alerts: AlertEvent[];
   connected: boolean;
   configured: boolean;
@@ -49,7 +46,6 @@ export function useMachineLive() {
   const uid = useAnonymousSession();
   const [state, setState] = useState<LiveState>({
     machines: [],
-    tickets: [],
     alerts: [],
     connected: false,
     configured: isFirebaseConfigured(),
@@ -63,7 +59,6 @@ export function useMachineLive() {
     if (!isFirebaseConfigured() || !uid) return;
 
     let unsubMachines: (() => void) | undefined;
-    let unsubTickets: (() => void) | undefined;
     let cancelled = false;
 
     void (async () => {
@@ -119,10 +114,6 @@ export function useMachineLive() {
             setState((prev) => ({ ...prev, connected: false, error: error.message }));
           },
         );
-        unsubTickets = subscribeTodayTickets(
-          (tickets) => setState((prev) => ({ ...prev, tickets })),
-          (error) => setState((prev) => ({ ...prev, error: error.message })),
-        );
       } catch (error) {
         const message = error instanceof Error ? error.message : "FIREBASE_ERROR";
         setState((prev) => ({ ...prev, error: message, connected: false }));
@@ -132,7 +123,6 @@ export function useMachineLive() {
     return () => {
       cancelled = true;
       unsubMachines?.();
-      unsubTickets?.();
     };
   }, [uid]);
 
@@ -157,33 +147,18 @@ export function useMachineLive() {
     return () => clearInterval(id);
   }, [uid]);
 
-  const myTickets = useMemo(
-    () => state.tickets.filter((ticket) => ticket.uid === uid),
-    [state.tickets, uid],
-  );
-  const waiting = useMemo(
-    () => state.tickets.filter((ticket) => ticket.status === "waiting" || ticket.status === "called"),
-    [state.tickets],
-  );
-  const serving = useMemo(
-    () => state.tickets.filter((ticket) => ticket.status === "in_use" || ticket.status === "called"),
-    [state.tickets],
-  );
-
-  return { ...state, uid, myTickets, waiting, serving };
+  return { ...state, uid };
 }
 
 export async function machineAction(
   id: string,
-  action: "start" | "collect" | "queue",
+  action: "start" | "collect",
   minutes?: 30 | 45 | "demo",
+  ownerName?: string,
 ) {
   if (action === "start") {
-    await startMachine(id, minutes ?? 30);
+    await startMachine(id, minutes ?? 30, ownerName ?? "");
     return;
-  }
-  if (action === "queue") {
-    return joinQueue();
   }
   await collectClothes(id);
 }
