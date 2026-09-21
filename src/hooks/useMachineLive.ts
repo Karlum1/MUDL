@@ -2,6 +2,7 @@
 
 import { isFirebaseConfigured } from "@/lib/firebase";
 import {
+  cancelCycle,
   collectClothes,
   markAlmostAlertSent,
   markMachineFinished,
@@ -152,12 +153,16 @@ export function useMachineLive() {
 
 export async function machineAction(
   id: string,
-  action: "start" | "collect",
+  action: "start" | "collect" | "cancel",
   minutes?: 30 | 45 | "demo",
   ownerName?: string,
 ) {
   if (action === "start") {
     await startMachine(id, minutes ?? 30, ownerName ?? "");
+    return;
+  }
+  if (action === "cancel") {
+    await cancelCycle(id);
     return;
   }
   await collectClothes(id);

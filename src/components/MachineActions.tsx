@@ -27,7 +27,11 @@ export function MachineActions({
   const canStart =
     scanned && (machine.status === "available" || machine.status === "reserved");
 
-  async function run(action: "start" | "collect", minutes?: 30 | 45 | "demo") {
+  async function run(action: "start" | "collect" | "cancel", minutes?: 30 | 45 | "demo") {
+    if (action === "cancel") {
+      const ok = window.confirm("ยกเลิกเวลาซักของเครื่องนี้ และปล่อยเครื่องว่าง?");
+      if (!ok) return;
+    }
     setPending(true);
     setError(null);
     try {
@@ -124,6 +128,17 @@ export function MachineActions({
             ทดลอง 20 วินาที (สำหรับเดโม)
           </button>
         </div>
+      )}
+
+      {machine.status === "in_use" && isMine && (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => run("cancel")}
+          className="mt-6 w-full rounded-2xl px-4 py-4 text-base font-semibold text-rose-100 ring-1 ring-rose-300/40 hover:bg-rose-400/10 disabled:opacity-60"
+        >
+          ยกเลิกเวลาซัก
+        </button>
       )}
 
       {machine.status === "in_use" && !isMine && (

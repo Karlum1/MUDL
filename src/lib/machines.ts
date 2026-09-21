@@ -291,7 +291,31 @@ export async function markAlmostAlertSent(id: string) {
   });
 }
 
+const FREE_MACHINE = {
+  status: "available" as const,
+  finishTime: null,
+  cycleMinutes: null,
+  almostAt: null,
+  almostAlertSent: false,
+  ownerUid: null,
+  ownerName: null,
+  ticketNumber: null,
+  reservedUntil: null,
+};
+
 export async function collectClothes(id: string) {
+  await releaseMachine(id, "finished", "NOT_FINISHED");
+}
+
+export async function cancelCycle(id: string) {
+  await releaseMachine(id, "in_use", "NOT_IN_USE");
+}
+
+async function releaseMachine(
+  id: string,
+  expectedStatus: "finished" | "in_use",
+  wrongStatusError: string,
+) {
   const user = await ensureAnonymousUser();
   const db = getFirebaseDb();
   const ref = doc(db, MACHINES_COLLECTION, id);
@@ -300,22 +324,11 @@ export async function collectClothes(id: string) {
     const snap = await tx.get(ref);
     if (!snap.exists()) throw new Error("MACHINE_NOT_FOUND");
     const current = machineFromDoc(id, snap.data());
-    if (current.status !== "finished") throw new Error("NOT_FINISHED");
+    if (current.status !== expectedStatus) throw new Error(wrongStatusError);
     if (current.ownerUid && current.ownerUid !== user.uid) {
       throw new Error("NOT_OWNER");
     }
-
-    tx.update(ref, {
-      status: "available",
-      finishTime: null,
-      cycleMinutes: null,
-      almostAt: null,
-      almostAlertSent: false,
-      ownerUid: null,
-      ownerName: null,
-      ticketNumber: null,
-      reservedUntil: null,
-    });
+    tx.update(ref, FREE_MACHINE);
   });
 
   writeMyCycle(null);

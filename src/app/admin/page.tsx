@@ -1,6 +1,7 @@
 "use client";
 
 import { SiteHeader } from "@/components/SiteHeader";
+import { QrPoster } from "@/components/QrPoster";
 import { useMachineLive } from "@/hooks/useMachineLive";
 import { actionErrorMessage } from "@/lib/errors";
 import {
@@ -145,6 +146,27 @@ export default function AdminPage() {
           </div>
         </div>
         {error && <p className="text-sm text-rose-300">{error}</p>}
+
+        <section className="rounded-3xl border border-white/10 bg-slate-900/60 p-5">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="font-semibold text-white">QR สำหรับติดเครื่อง</h2>
+              <p className="mt-1 max-w-2xl text-sm text-slate-400">
+                พิมพ์แล้วติดที่เครื่อง — สแกนแล้วเปิดหน้าตั้งเวลา (`?scan=1`)
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="rounded-xl bg-white/10 px-3 py-2 text-xs font-semibold text-white"
+            >
+              พิมพ์ QR
+            </button>
+          </div>
+          <div className="mt-6">
+            <QrPoster machines={machines} />
+          </div>
+        </section>
 
         <section className="grid gap-4 md:grid-cols-2">
           {machines.map((machine) => {

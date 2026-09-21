@@ -1,11 +1,14 @@
 "use client";
 
+import { actionErrorMessage } from "@/lib/errors";
+import { machineAction } from "@/hooks/useMachineLive";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { WashingMachineVisual } from "@/components/WashingMachineVisual";
 import { displayOwnerName } from "@/lib/machines";
 import { STATUS_COPY } from "@/lib/status";
 import type { Machine } from "@/lib/types";
 import Link from "next/link";
+import { useState } from "react";
 
 export function MachineCard({
   machine,
@@ -15,6 +18,22 @@ export function MachineCard({
   isMine?: boolean;
 }) {
   const copy = STATUS_COPY[machine.status];
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function cancelMine() {
+    const ok = window.confirm("ยกเลิกเวลาซักของเครื่องนี้ และปล่อยเครื่องว่าง?");
+    if (!ok) return;
+    setPending(true);
+    setError(null);
+    try {
+      await machineAction(machine.id, "cancel");
+    } catch (err) {
+      setError(actionErrorMessage(err));
+    } finally {
+      setPending(false);
+    }
+  }
 
   return (
     <article
@@ -60,7 +79,24 @@ export function MachineCard({
           )}
         </div>
       </div>
-      {isMine ? (
+      {isMine && machine.status === "in_use" ? (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <Link
+            href={`/machine/${machine.id}`}
+            className="text-xs text-cyan-200 hover:text-cyan-100"
+          >
+            ดูรอบของฉัน →
+          </Link>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => void cancelMine()}
+            className="text-xs font-medium text-rose-200 hover:text-rose-100 disabled:opacity-60"
+          >
+            ยกเลิกเวลาซัก
+          </button>
+        </div>
+      ) : isMine ? (
         <Link
           href={`/machine/${machine.id}`}
           className="mt-4 inline-block text-xs text-cyan-200 hover:text-cyan-100"
@@ -70,6 +106,7 @@ export function MachineCard({
       ) : (
         <p className="mt-4 text-xs text-slate-500">ตั้งเวลาได้เฉพาะตอนสแกน QR ที่เครื่อง</p>
       )}
+      {error && <p className="mt-2 text-xs text-rose-300">{error}</p>}
     </article>
   );
 }

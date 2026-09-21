@@ -25,12 +25,6 @@ export function SiteHeader({ connected }: { connected?: boolean }) {
           >
             จอสถานะ
           </Link>
-          <Link
-            href="/qrs"
-            className="hidden rounded-full px-4 py-2 text-slate-300 hover:text-white sm:inline"
-          >
-            พิมพ์ QR
-          </Link>
           {connected !== undefined && (
             <span
               className={`hidden items-center gap-2 rounded-full px-3 py-2 text-xs sm:inline-flex ${
