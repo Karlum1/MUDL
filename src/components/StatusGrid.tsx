@@ -1,40 +1,49 @@
 "use client";
 
 import { MachineCard } from "@/components/MachineCard";
+import { useLocale } from "@/components/AppProviders";
+import { DORMS } from "@/lib/dorms";
+import { t } from "@/lib/i18n";
 import type { Machine } from "@/lib/types";
 
 export function StatusGrid({
   machines,
   uid,
+  filtered = false,
 }: {
   machines: Machine[];
   uid?: string | null;
+  filtered?: boolean;
 }) {
-  const floors = [1, 2];
-
+  const locale = useLocale();
   if (machines.length === 0) {
     return (
-      <div className="rounded-3xl border border-white/10 bg-slate-900/50 p-8 text-center text-slate-400">
-        กำลังโหลดสถานะเครื่องซักผ้า...
+      <div className="rounded-3xl border border-line bg-surface p-8 text-center text-muted">
+        {filtered ? t(locale, "filterEmpty") : t(locale, "loadingMachines")}
       </div>
     );
   }
 
+  const visibleDorms = DORMS.filter((dorm) => machines.some((item) => item.dormId === dorm.id));
+
   return (
-    <div className="space-y-8">
-      {floors.map((floor) => {
-        const floorMachines = machines.filter((m) => m.floor === floor);
+    <div className="space-y-10">
+      {visibleDorms.map((dorm) => {
+        const dormMachines = machines.filter((m) => m.dormId === dorm.id);
+        const free = dormMachines.filter((m) => m.status === "available").length;
         return (
-          <section key={floor}>
-            <h2 className="mb-4 text-sm font-medium uppercase tracking-[0.18em] text-slate-400">
-              ชั้น {floor} · Floor {floor}
-            </h2>
+          <section key={dorm.id}>
+            <h2 className="mb-1 text-lg font-semibold text-foreground">{dorm.name}</h2>
+            <p className="mb-4 text-xs uppercase tracking-[0.16em] text-muted">
+              {dorm.halls} · {t(locale, "freeOf")} {free}/{dormMachines.length}
+            </p>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-              {floorMachines.map((machine) => (
+              {dormMachines.map((machine) => (
                 <MachineCard
                   key={machine.id}
                   machine={machine}
                   isMine={Boolean(uid && machine.ownerUid === uid)}
+                  uid={uid}
                 />
               ))}
             </div>

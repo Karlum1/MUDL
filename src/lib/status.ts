@@ -7,31 +7,31 @@ export const STATUS_COPY: Record<
   available: {
     th: "เครื่องว่าง",
     en: "Available",
-    badge: "bg-emerald-400/15 text-emerald-300 ring-1 ring-emerald-400/30",
+    badge: "bg-emerald-400/15 text-[color:var(--status-ok)] ring-1 ring-emerald-400/30",
     glow: "shadow-[0_0_24px_-8px_rgba(52,211,153,0.55)]",
   },
   reserved: {
     th: "จองคิวแล้ว",
     en: "Reserved",
-    badge: "bg-violet-400/15 text-violet-200 ring-1 ring-violet-400/30",
+    badge: "bg-violet-400/15 text-[color:var(--status-hold)] ring-1 ring-violet-400/30",
     glow: "shadow-[0_0_24px_-8px_rgba(167,139,250,0.45)]",
   },
   in_use: {
     th: "กำลังใช้งาน / เต็ม",
     en: "In Use / Full",
-    badge: "bg-sky-400/15 text-sky-200 ring-1 ring-sky-400/30",
+    badge: "bg-sky-400/15 text-[color:var(--status-busy)] ring-1 ring-sky-400/30",
     glow: "shadow-[0_0_24px_-8px_rgba(56,189,248,0.45)]",
   },
   finished: {
     th: "ใช้งานเสร็จแล้วแต่ยังไม่เอาผ้าออก",
     en: "Finished (clothes not collected)",
-    badge: "bg-amber-400/15 text-amber-200 ring-1 ring-amber-400/35",
+    badge: "bg-amber-400/15 text-[color:var(--status-done)] ring-1 ring-amber-400/35",
     glow: "shadow-[0_0_24px_-8px_rgba(251,191,36,0.5)]",
   },
   maintenance: {
     th: "ปิดปรับปรุงชั่วคราว / ชำรุด",
     en: "Out of order",
-    badge: "bg-rose-400/15 text-rose-200 ring-1 ring-rose-400/35",
+    badge: "bg-rose-400/15 text-[color:var(--status-bad)] ring-1 ring-rose-400/35",
     glow: "shadow-[0_0_24px_-8px_rgba(251,113,133,0.45)]",
   },
 };

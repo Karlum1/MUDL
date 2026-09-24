@@ -1,14 +1,17 @@
 import { Timestamp } from "firebase-admin/firestore";
-import { getAdminDb, getAdminMessaging, isAdminConfigured } from "@/lib/admin";
+import { getAdminDb, isAdminConfigured } from "@/lib/admin";
+import { sendPushAndPrune } from "@/lib/pushCleanup";
 
 const CLEAR_MACHINE = {
   status: "available",
   finishTime: null,
   cycleMinutes: null,
+  cycleMode: null,
   almostAt: null,
   almostAlertSent: false,
   ownerUid: null,
   ownerName: null,
+  ownerPhone: null,
   ticketNumber: null,
   reservedUntil: null,
   maintenanceNote: null,
@@ -28,24 +31,7 @@ async function sendToAll(title: string, body: string, tag: string) {
   const db = getAdminDb();
   const snap = await db.collection("pushTokens").get();
   const tokens = snap.docs.map((item) => item.id).filter(Boolean);
-  if (tokens.length === 0) return { sent: 0 };
-  const messaging = getAdminMessaging();
-  const chunkSize = 500;
-  let sent = 0;
-  for (let i = 0; i < tokens.length; i += chunkSize) {
-    const chunk = tokens.slice(i, i + chunkSize);
-    const result = await messaging.sendEachForMulticast({
-      tokens: chunk,
-      notification: { title, body },
-      webpush: {
-        fcmOptions: { link: "/" },
-        notification: { tag },
-      },
-      data: { tag },
-    });
-    sent += result.successCount;
-  }
-  return { sent };
+  return sendPushAndPrune(tokens, title, body, tag);
 }
 
 export async function runAdminCommand(body: {

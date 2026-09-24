@@ -41,3 +41,5 @@ export const PUSH_TOKENS_COLLECTION = "pushTokens";
 export const ANNOUNCEMENTS_COLLECTION = "announcements";
 export const MAINTENANCE_LOGS_COLLECTION = "maintenanceLogs";
 export const USAGE_EVENTS_COLLECTION = "usageEvents";
+export const DAILY_STATS_COLLECTION = "dailyStats";
+export const MACHINE_WATCHES_COLLECTION = "machineWatches";

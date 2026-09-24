@@ -3,46 +3,42 @@
 import { NotificationDock } from "@/components/NotificationDock";
 import { SiteHeader } from "@/components/SiteHeader";
 import { StatusGrid } from "@/components/StatusGrid";
+import { useLocale } from "@/components/AppProviders";
 import { useMachineLive } from "@/hooks/useMachineLive";
-import Link from "next/link";
+import { PUBLIC_DORM_IDS } from "@/lib/dorms";
+import { t } from "@/lib/i18n";
 
 export default function HomePage() {
-  const { machines, alerts, connected, configured, error, uid } = useMachineLive();
-  const available = machines.filter((m) => m.status === "available").length;
+  const locale = useLocale();
+  const { machines, alerts, connected, configured, error, uid } = useMachineLive({
+    dormIds: [...PUBLIC_DORM_IDS],
+  });
 
   return (
     <div className="flex min-h-full flex-col">
       <SiteHeader connected={connected} />
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8 lg:flex-row">
         <div className="flex-1">
-          <p className="text-sm text-slate-400">ไม่ต้องสมัคร · สแกน QR ที่เครื่องเพื่อเริ่มซัก</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-            สถานะเครื่องซักผ้าหอพัก
+          <p className="text-sm text-muted">{t(locale, "homeLead")}</p>
+          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+            {t(locale, "homeTitle")}
           </h1>
-          <p className="mt-3 max-w-xl text-slate-400">
-            {machines.length === 0
-              ? "รอข้อมูลจาก Firestore"
-              : `ว่าง ${available} จาก ${machines.length} เครื่อง · เครื่องหมุนเมื่อกำลังซัก และเด้งเมื่อผ้าเสร็จ`}
-          </p>
-          <p className="mt-2 text-sm">
-            <Link href="/board" className="text-cyan-300 hover:text-cyan-200">
-              เปิดจอสถานะสำหรับห้องซักผ้า →
-            </Link>
-          </p>
+          {machines.length === 0 && (
+            <p className="mt-3 max-w-xl text-muted">{t(locale, "waitingFirestore")}</p>
+          )}
 
           {!configured && (
-            <div className="mt-6 rounded-3xl border border-amber-300/30 bg-amber-300/10 p-5 text-sm leading-6 text-amber-100">
-              <p className="font-semibold">ยังไม่ได้ตั้งค่า Firebase</p>
-              <p className="mt-2 text-amber-100/80">
-                คัดลอก <code className="font-mono text-amber-50">.env.example</code> เป็น{" "}
-                <code className="font-mono text-amber-50">.env.local</code>
+            <div className="mt-6 rounded-3xl border border-amber-400/40 bg-amber-400/15 p-5 text-sm leading-6 text-foreground">
+              <p className="font-semibold">{t(locale, "firebaseMissingTitle")}</p>
+              <p className="mt-2 text-muted">
+                {t(locale, "firebaseMissingBody")}
               </p>
             </div>
           )}
 
           {configured && error && (
-            <div className="mt-6 rounded-3xl border border-rose-300/30 bg-rose-400/10 p-5 text-sm text-rose-100">
-              เชื่อม Firestore ไม่ได้: {error}
+            <div className="mt-6 rounded-3xl border border-rose-400/40 bg-rose-400/15 p-5 text-sm text-foreground">
+              {t(locale, "firestoreFail")}: {error}
             </div>
           )}
 

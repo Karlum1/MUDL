@@ -14,7 +14,7 @@ service cloud.firestore {
     match /machines/{machineId} {
       allow read: if true;
       allow create: if isAuth()
-        && machineId.matches('wm-0[1-6]')
+        && machineId.matches('^((int|chai|kan|lee|sri)-(wm|dr)-[0-9]{2}|wm-[0-9]{2})$')
         && request.resource.data.status == 'available';
 
       allow update: if isAuth() && (
@@ -25,6 +25,10 @@ service cloud.firestore {
           && request.resource.data.ownerName is string
           && request.resource.data.ownerName.size() > 0
           && request.resource.data.ownerName.size() <= 24
+          && (!('ownerPhone' in request.resource.data)
+            || request.resource.data.ownerPhone == null
+            || (request.resource.data.ownerPhone is string
+              && request.resource.data.ownerPhone.size() <= 12))
         )
         ||
         (
@@ -71,13 +75,40 @@ service cloud.firestore {
 
     match /maintenanceLogs/{id} {
       allow read: if true;
-      allow write: if false;
+      allow create: if isAuth()
+        && request.resource.data.action == 'report'
+        && request.resource.data.machineId is string
+        && request.resource.data.machineId.size() > 0
+        && request.resource.data.machineId.size() <= 32
+        && request.resource.data.note is string
+        && request.resource.data.note.size() > 0
+        && request.resource.data.note.size() <= 200
+        && request.resource.data.createdAt is timestamp;
+      allow update, delete: if false;
+    }
+
+    match /machineWatches/{id} {
+      allow read: if isAuth() && resource.data.uid == request.auth.uid;
+      allow create: if isAuth()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.machineId is string
+        && request.resource.data.machineId.size() > 0
+        && request.resource.data.machineId.size() <= 32
+        && request.resource.data.createdAt is timestamp;
+      allow delete: if isAuth() && resource.data.uid == request.auth.uid;
+      allow update: if false;
     }
 
     match /usageEvents/{id} {
       allow read: if true;
       allow create: if isAuth();
       allow update, delete: if false;
+    }
+
+    match /dailyStats/{dateId} {
+      allow read: if true;
+      allow create, update: if isAuth()
+        && dateId.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
     }
   }
 }

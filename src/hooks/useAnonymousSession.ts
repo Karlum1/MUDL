@@ -2,7 +2,7 @@
 
 import { ensureAnonymousUser, subscribeAuth } from "@/lib/auth";
 import { isFirebaseConfigured } from "@/lib/firebase";
-import { registerWebPush } from "@/lib/session";
+import { recordActiveUserOnce } from "@/lib/dailyStats";
 import { useEffect, useState } from "react";
 
 export function useAnonymousSession() {
@@ -16,9 +16,7 @@ export function useAnonymousSession() {
     void ensureAnonymousUser()
       .then((user) => {
         setUid(user.uid);
-        if (typeof Notification !== "undefined" && Notification.permission === "granted") {
-          void registerWebPush(user.uid);
-        }
+        recordActiveUserOnce();
       })
       .catch(() => undefined);
     return unsub;

@@ -1,5 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Noto_Sans_Thai } from "next/font/google";
+import { AppProviders } from "@/components/AppProviders";
+import { MachineLiveProvider } from "@/hooks/useMachineLive";
+import { LOCALE_BOOT } from "@/lib/i18n";
+import { THEME_BOOT } from "@/lib/theme";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -18,20 +22,38 @@ const notoThai = Noto_Sans_Thai({
   weight: ["400", "500", "600", "700"],
 });
 
+export const viewport: Viewport = {
+  themeColor: "#07111c",
+};
+
 export const metadata: Metadata = {
-  title: "สถานะเครื่องซักผ้าหอพัก",
+  title: "Scan&Wash",
   description:
-    "Dorm laundry board — scan QR at the machine to start a timer, live status, and alerts.",
+    "Scan&Wash — scan QR at the machine to start a timer, live status, and alerts.",
+  applicationName: "Scan&Wash",
+  appleWebApp: {
+    capable: true,
+    title: "Scan&Wash",
+    statusBarStyle: "black-translucent",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="th"
+      suppressHydrationWarning
+      data-theme="night"
       className={`${geistSans.variable} ${geistMono.variable} ${notoThai.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-slate-950 text-slate-100">
-        {children}
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
+        <script dangerouslySetInnerHTML={{ __html: LOCALE_BOOT }} />
+      </head>
+      <body className="flex min-h-full flex-col bg-background text-foreground">
+        <AppProviders>
+          <MachineLiveProvider>{children}</MachineLiveProvider>
+        </AppProviders>
       </body>
     </html>
   );

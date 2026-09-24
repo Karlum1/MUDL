@@ -1,24 +1,84 @@
 @import "tailwindcss";
 
-:root {
+:root,
+[data-theme="night"] {
   --background: #07111c;
   --foreground: #e8f4ff;
+  --surface: rgb(15 23 42 / 0.7);
+  --field: rgb(2 6 23 / 0.7);
+  --muted: #94a3b8;
+  --accent: #67e8f9;
+  --accent-fg: #020617;
+  --accent-hover: #a5f3fc;
+  --line: rgb(255 255 255 / 0.1);
+  --chip: rgb(255 255 255 / 0.08);
+  --header: rgb(2 6 23 / 0.8);
+  --status-ok: #6ee7b7;
+  --status-hold: #ddd6fe;
+  --status-busy: #bae6fd;
+  --status-done: #fde68a;
+  --status-bad: #fecdd3;
+}
+
+[data-theme="day"] {
+  --background: #e8f2f6;
+  --foreground: #0f172a;
+  --surface: #ffffff;
+  --field: #f1f5f9;
+  --muted: #475569;
+  --accent: #0e7490;
+  --accent-fg: #ecfeff;
+  --accent-hover: #155e75;
+  --line: rgb(15 23 42 / 0.14);
+  --chip: rgb(14 116 144 / 0.1);
+  --header: rgb(232 242 246 / 0.92);
+  --status-ok: #047857;
+  --status-hold: #6d28d9;
+  --status-busy: #0e7490;
+  --status-done: #b45309;
+  --status-bad: #be123c;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-field: var(--field);
+  --color-muted: var(--muted);
+  --color-accent: var(--accent);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-hover: var(--accent-hover);
+  --color-line: var(--line);
+  --color-chip: var(--chip);
+  --color-ok: var(--status-ok);
+  --color-warn: var(--status-done);
+  --color-bad: var(--status-bad);
   --font-sans: var(--font-noto-thai), var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
+html,
 body {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+
+body {
+  font-family: var(--font-sans), sans-serif;
+}
+
+[data-theme="night"] body,
+:root:not([data-theme="day"]) body {
   background:
     radial-gradient(1200px 600px at 10% -10%, rgba(34, 211, 238, 0.16), transparent 55%),
     radial-gradient(900px 500px at 110% 0%, rgba(16, 185, 129, 0.12), transparent 50%),
     var(--background);
-  color: var(--foreground);
-  font-family: var(--font-sans), sans-serif;
+}
+
+[data-theme="day"] body {
+  background:
+    radial-gradient(1200px 600px at 10% -10%, rgba(14, 116, 144, 0.1), transparent 55%),
+    var(--background);
 }
 
 @keyframes washer-drum-spin {
@@ -71,6 +131,18 @@ body {
   animation: washer-drum-spin 1.15s linear infinite;
 }
 
+.look-combo.washer-spinning .washer-drum {
+  transform-origin: 40px 58px;
+}
+
+.look-grey.washer-spinning .washer-drum {
+  transform-origin: 36px 62px;
+}
+
+.combo-run {
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.35));
+}
+
 .washer-spinning .washer-glass {
   fill: #155e75;
 }
@@ -84,11 +156,194 @@ body {
   animation: washer-breathe 2.8s ease-in-out infinite;
 }
 
-.washer-sad {
-  transform: rotate(-8deg);
+.washer-broke {
   filter: grayscale(0.35);
+}
+
+.broke-part {
+  animation: broke-part-fly 1.25s ease-out infinite;
+}
+
+.broke-part-left {
+  animation-name: broke-part-fly-left;
+  animation-delay: 0.2s;
+}
+
+.broke-part-down {
+  animation-name: broke-part-fly-down;
+  animation-delay: 0.45s;
+}
+
+@keyframes broke-part-fly {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg) scale(0.55);
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(14px, -22px) rotate(90deg) scale(1.05);
+  }
+}
+
+@keyframes broke-part-fly-left {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg) scale(0.55);
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-16px, -18px) rotate(-110deg) scale(1.05);
+  }
+}
+
+@keyframes broke-part-fly-down {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(0deg) scale(0.55);
+  }
+  18% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(12px, 14px) rotate(50deg) scale(1);
+  }
+}
+
+.broke-wrench {
+  animation: wrench-repair 0.7s ease-in-out infinite;
+  transform-origin: 30% 80%;
+}
+
+@keyframes wrench-repair {
+  0%,
+  100% {
+    transform: rotate(-38deg);
+  }
+  45% {
+    transform: rotate(22deg) translate(1px, 1px);
+  }
+  58% {
+    transform: rotate(8deg);
+  }
+  72% {
+    transform: rotate(26deg);
+  }
+}
+
+.dryer-hot .dryer-body {
+  fill: #ffedd5;
+}
+
+.dryer-hot .dryer-glass {
+  fill: #f97316;
+}
+
+.dryer-hot {
+  filter: drop-shadow(0 0 10px rgba(249, 115, 22, 0.45));
+}
+
+.dryer-steam {
+  animation: dryer-steam 1.3s ease-out infinite;
+}
+
+.dryer-steam-delay {
+  animation-delay: 0.35s;
+}
+
+.dryer-steam-delay-2 {
+  animation-delay: 0.7s;
+}
+
+@keyframes dryer-steam {
+  0% {
+    opacity: 0;
+    transform: translateY(8px) scale(0.7);
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-18px) scale(1.2);
+  }
 }
 
 .washer-sparkle {
   animation: washer-sparkle 0.8s ease-in-out infinite;
+}
+
+.washer-dial-idle .washer-drum {
+  transform-box: view-box;
+  transform-origin: 100px 100px;
+  animation: washer-drum-spin 7s linear infinite;
+}
+
+.washer-dial-drag .washer-drum {
+  transform-box: view-box;
+  transform-origin: 100px 100px;
+  animation: washer-drum-spin 1.1s linear infinite;
+}
+
+.lang-flip {
+  width: 2.75rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  perspective: 720px;
+  cursor: pointer;
+}
+
+.lang-flip-inner {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.48s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.lang-flip-inner.is-en,
+[data-locale="en"] .lang-flip-inner {
+  transform: rotateY(180deg);
+}
+
+.lang-flip-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--foreground);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  backface-visibility: hidden;
+}
+
+.lang-flip-back {
+  transform: rotateY(180deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lang-flip-inner {
+    transition: none;
+  }
+}
+
+@media print {
+  .qr-dorm {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
 }

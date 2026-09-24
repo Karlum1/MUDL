@@ -1,25 +1,63 @@
-import { getAdminDb, getAdminMessaging, isAdminConfigured } from "@/lib/admin";
+import { Timestamp } from "firebase-admin/firestore";
+import { getAdminDb, isAdminConfigured } from "@/lib/admin";
+import { sendPushAndPrune } from "@/lib/pushCleanup";
+import { FINISHED_STALE_MS, remainingCycleMinutes } from "@/lib/cycleTiming";
+import { bangkokHour, bangkokMinute } from "@/lib/day";
 
-async function sendToUid(
-  uid: string,
-  title: string,
-  body: string,
-  tag: string,
-) {
+const FREE_MACHINE = {
+  status: "available",
+  finishTime: null,
+  cycleMinutes: null,
+  cycleMode: null,
+  almostAt: null,
+  almostAlertSent: false,
+  ownerUid: null,
+  ownerName: null,
+  ownerPhone: null,
+  ticketNumber: null,
+  reservedUntil: null,
+};
+
+async function sendToUid(uid: string, title: string, body: string, tag: string) {
   const db = getAdminDb();
   const snap = await db.collection("pushTokens").where("uid", "==", uid).get();
   const tokens = snap.docs.map((item) => item.id).filter(Boolean);
-  if (tokens.length === 0) return;
-  const messaging = getAdminMessaging();
-  await messaging.sendEachForMulticast({
-    tokens,
-    notification: { title, body },
-    webpush: {
-      fcmOptions: { link: "/" },
-      notification: { tag },
-    },
-    data: { tag },
+  await sendPushAndPrune(tokens, title, body, tag);
+}
+
+async function logAdmin(machineId: string, action: string, note: string) {
+  const db = getAdminDb();
+  await db.collection("maintenanceLogs").add({
+    machineId,
+    action,
+    note,
+    createdAt: Timestamp.now(),
   });
+}
+
+const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+const CLEANUP_BATCH = 400;
+
+async function deleteOldDocs(collectionName: string, cutoff: Timestamp) {
+  const db = getAdminDb();
+  const snap = await db
+    .collection(collectionName)
+    .where("createdAt", "<", cutoff)
+    .limit(CLEANUP_BATCH)
+    .get();
+  if (snap.empty) return 0;
+  const batch = db.batch();
+  for (const item of snap.docs) batch.delete(item.ref);
+  await batch.commit();
+  return snap.size;
+}
+
+async function cleanupStaleLogs() {
+  if (bangkokHour() !== 3 || bangkokMinute() !== 0) return 0;
+  const cutoff = Timestamp.fromMillis(Date.now() - THIRTY_DAYS_MS);
+  const usage = await deleteOldDocs("usageEvents", cutoff);
+  const logs = await deleteOldDocs("maintenanceLogs", cutoff);
+  return usage + logs;
 }
 
 export async function runLaundryTick() {
@@ -29,12 +67,44 @@ export async function runLaundryTick() {
 
   const db = getAdminDb();
   const now = Date.now();
-  const machinesSnap = await db.collection("machines").get();
+  const machinesSnap = await db
+    .collection("machines")
+    .where("status", "in", ["in_use", "finished", "reserved"])
+    .get();
+  const freeIds = new Set<string>();
+  const labels = new Map<string, string>();
 
   for (const machine of machinesSnap.docs) {
     const data = machine.data();
+    labels.set(machine.id, String(data.label ?? machine.id));
     if (data.status === "maintenance") continue;
-    if (data.status === "in_use" && data.finishTime?.toMillis?.() <= now) {
+
+    const finishMs = data.finishTime?.toMillis?.() as number | undefined;
+    const almostMs = data.almostAt?.toMillis?.() as number | undefined;
+
+    if (data.status === "in_use" && finishMs && finishMs + FINISHED_STALE_MS <= now) {
+      await machine.ref.update(FREE_MACHINE);
+      await logAdmin(
+        machine.id,
+        "auto_release",
+        "ปล่อยเครื่องว่างอัตโนมัติ หลังผ้าค้างเกิน 20 นาที",
+      );
+      freeIds.add(machine.id);
+      continue;
+    }
+
+    if (data.status === "finished" && finishMs && finishMs + FINISHED_STALE_MS <= now) {
+      await machine.ref.update(FREE_MACHINE);
+      await logAdmin(
+        machine.id,
+        "auto_release",
+        "ปล่อยเครื่องว่างอัตโนมัติ หลังผ้าค้างเกิน 20 นาที",
+      );
+      freeIds.add(machine.id);
+      continue;
+    }
+
+    if (data.status === "in_use" && finishMs && finishMs <= now) {
       await machine.ref.update({ status: "finished", almostAlertSent: true });
       if (typeof data.ownerUid === "string") {
         await sendToUid(
@@ -46,16 +116,19 @@ export async function runLaundryTick() {
       }
     } else if (
       data.status === "in_use" &&
-      data.almostAt?.toMillis?.() <= now &&
-      now < (data.finishTime?.toMillis?.() ?? 0) &&
+      almostMs &&
+      almostMs <= now &&
+      finishMs &&
+      now < finishMs &&
       !data.almostAlertSent &&
       typeof data.ownerUid === "string"
     ) {
       await machine.ref.update({ almostAlertSent: true });
+      const mins = remainingCycleMinutes(finishMs, now);
       await sendToUid(
         data.ownerUid,
         "ใกล้เสร็จแล้ว",
-        `${data.label ?? machine.id} เหลืออีกประมาณ 5 นาที`,
+        `${data.label ?? machine.id} ใกล้เสร็จแล้ว เหลืออีกประมาณ ${mins} นาที กรุณาเตรียมไปรับผ้า`,
         `${machine.id}-almost`,
       );
     } else if (data.status === "reserved") {
@@ -66,8 +139,36 @@ export async function runLaundryTick() {
         reservedUntil: null,
         ticketNumber: null,
       });
+      freeIds.add(machine.id);
     }
   }
 
-  return { ok: true };
+  const watches = await db.collection("machineWatches").get();
+  const busyIds = new Set(machinesSnap.docs.map((item) => item.id));
+  const extraIds = new Set<string>();
+  for (const watch of watches.docs) {
+    const machineId = String(watch.data().machineId ?? "");
+    if (machineId && !busyIds.has(machineId) && !freeIds.has(machineId)) extraIds.add(machineId);
+  }
+  for (const id of extraIds) {
+    const extra = await db.collection("machines").doc(id).get();
+    const status = String(extra.data()?.status ?? "available");
+    if (status === "available") {
+      freeIds.add(id);
+      labels.set(id, String(extra.data()?.label ?? id));
+    }
+  }
+
+  for (const watch of watches.docs) {
+    const data = watch.data();
+    const machineId = String(data.machineId ?? "");
+    const uid = String(data.uid ?? "");
+    if (!freeIds.has(machineId) || !uid) continue;
+    const label = labels.get(machineId) ?? machineId;
+    await sendToUid(uid, "เครื่องว่างแล้ว", `${label} ว่างแล้ว ไปสแกน QR ได้`, `${machineId}-free`);
+    await watch.ref.delete();
+  }
+
+  const cleaned = await cleanupStaleLogs();
+  return { ok: true, cleaned };
 }
