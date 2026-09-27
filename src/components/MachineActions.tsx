@@ -18,7 +18,6 @@ import type { Machine } from "@/lib/types";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { WashingMachineVisual } from "@/components/WashingMachineVisual";
 import { WasherDial } from "@/components/WasherDial";
-import { ReportMachine } from "@/components/ReportMachine";
 import { WatchBell } from "@/components/WatchBell";
 import { useLocale } from "@/components/AppProviders";
 import Link from "next/link";
@@ -288,8 +287,6 @@ export function MachineActions({
           {machine.maintenanceNote || t(locale, "closedRepair")}
         </p>
       )}
-
-      {machine.status !== "maintenance" && <ReportMachine machineId={machine.id} />}
 
       {error && <p className="mt-4 text-sm text-bad">{actionErrorMessage(error)}</p>}
     </div>

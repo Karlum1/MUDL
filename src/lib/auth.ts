@@ -1,10 +1,13 @@
 import {
+  browserLocalPersistence,
   browserSessionPersistence,
   getAuth,
   inMemoryPersistence,
+  indexedDBLocalPersistence,
   onAuthStateChanged,
   setPersistence,
   signInAnonymously,
+  type Persistence,
   type User,
 } from "firebase/auth";
 import { getFirebaseApp, isFirebaseConfigured } from "@/lib/firebase";
@@ -32,6 +35,23 @@ function withTimeout<T>(promise: Promise<T>, ms: number, code: string): Promise<
   });
 }
 
+async function persistAuth(auth: ReturnType<typeof getAuth>) {
+  const modes: Persistence[] = [
+    indexedDBLocalPersistence,
+    browserLocalPersistence,
+    browserSessionPersistence,
+    inMemoryPersistence,
+  ];
+  for (const mode of modes) {
+    try {
+      await withTimeout(setPersistence(auth, mode), 2500, "AUTH_TIMEOUT");
+      return;
+    } catch {
+      /* quota / timeout — try a lighter store */
+    }
+  }
+}
+
 let inFlight: Promise<User> | null = null;
 
 export async function ensureAnonymousUser(): Promise<User> {
@@ -44,20 +64,15 @@ export async function ensureAnonymousUser(): Promise<User> {
 
   inFlight = (async () => {
     const wait = typeof window === "undefined" ? 8000 : 2500;
-    const persist = async () => {
-      try {
-        await withTimeout(setPersistence(auth, browserSessionPersistence), 1500, "AUTH_TIMEOUT");
-      } catch {
-        try {
-          await withTimeout(setPersistence(auth, inMemoryPersistence), 1500, "AUTH_TIMEOUT");
-        } catch {
-          /* IndexedDB stuck — sign-in may still work without persisted session */
-        }
-      }
-    };
+    await persistAuth(auth);
+    try {
+      await withTimeout(auth.authStateReady(), wait, "AUTH_TIMEOUT");
+    } catch {
+      /* continue — may still have currentUser or need a new sign-in */
+    }
+    if (auth.currentUser) return auth.currentUser;
 
     try {
-      await persist();
       const result = await withTimeout(signInAnonymously(auth), wait, "AUTH_TIMEOUT");
       return result.user;
     } catch (error) {

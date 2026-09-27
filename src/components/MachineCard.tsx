@@ -4,7 +4,6 @@ import { actionErrorMessage } from "@/lib/errors";
 import { machineAction } from "@/hooks/useMachineLive";
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { WashingMachineVisual } from "@/components/WashingMachineVisual";
-import { ReportMachine } from "@/components/ReportMachine";
 import { WatchBell } from "@/components/WatchBell";
 import { useLocale } from "@/components/AppProviders";
 import { displayOwnerName } from "@/lib/machines";
@@ -121,12 +120,15 @@ export function MachineCard({
           {t(locale, "manageMine")}
         </Link>
       ) : null}
-      {machine.status !== "maintenance" && <ReportMachine machineId={machine.id} />}
-      <WatchBell
-        machineId={machine.id}
-        uid={uid}
-        busy={!isMine && (machine.status === "in_use" || machine.status === "finished")}
-      />
+      {machine.status !== "maintenance" && (
+        <div className="mt-4">
+          <WatchBell
+            machineId={machine.id}
+            uid={uid}
+            busy={!isMine && (machine.status === "in_use" || machine.status === "finished")}
+          />
+        </div>
+      )}
       {error && <p className="mt-2 text-xs text-bad">{error}</p>}
     </article>
   );

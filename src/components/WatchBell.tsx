@@ -42,7 +42,7 @@ export function WatchBell({
   }
 
   return (
-    <div className="mt-3">
+    <div>
       <button
         type="button"
         disabled={pending}

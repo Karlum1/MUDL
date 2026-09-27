@@ -7,6 +7,7 @@ import { displayOwnerName } from "@/lib/machines";
 import { STATUS_COPY } from "@/lib/status";
 import { bangkokDateKey, bangkokDateLabel } from "@/lib/day";
 import { useMachineLive } from "@/hooks/useMachineLive";
+import { RepairFab } from "@/components/RepairFab";
 import { LanguageFlip } from "@/components/LanguageFlip";
 import { ThemeToggle } from "@/components/ThemeToggle";
 import { useLocale } from "@/components/AppProviders";
@@ -28,7 +29,7 @@ export default function BoardPage() {
           <p className="text-xs tracking-[0.18em] text-accent">{"Scan&Wash"}</p>
           <h1 className="text-2xl font-semibold">{t(locale, "boardTitle")} · {bangkokDateLabel(dateKey)}</h1>
         </div>
-        <div className="flex items-center gap-4 text-sm">
+        <div className="flex shrink-0 items-center gap-3 text-sm">
           <LanguageFlip />
           <ThemeToggle />
           <span className={connected ? "text-ok" : "text-warn"}>
@@ -116,6 +117,7 @@ export default function BoardPage() {
           );
         })}
       </main>
+      <RepairFab />
     </div>
   );
 }

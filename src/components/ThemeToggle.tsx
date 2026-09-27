@@ -70,7 +70,7 @@ export function ThemeToggle() {
         <div
           id={menuId}
           role="menu"
-          className="absolute right-0 z-30 mt-2 min-w-48 overflow-hidden rounded-2xl border border-line bg-surface py-1 shadow-lg"
+          className="absolute right-0 z-50 mt-2 min-w-[13.5rem] overflow-visible rounded-2xl border border-line bg-surface py-1 text-[color:var(--foreground)] shadow-lg"
         >
           {options.map((item) => (
             <button
@@ -78,14 +78,16 @@ export function ThemeToggle() {
               type="button"
               role="menuitem"
               onClick={() => choose(item.id)}
-              className={`flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm ${
+              className={`flex w-full items-center gap-3 px-3 py-2.5 text-left text-sm leading-5 ${
                 pref === item.id
                   ? "bg-accent text-accent-fg"
-                  : "text-foreground hover:bg-chip"
+                  : "text-[color:var(--foreground)] hover:bg-chip"
               }`}
             >
               <ThemeIcon pref={item.id} />
-              {item.label}
+              <span className="whitespace-nowrap font-medium [font-family:var(--font-geist-sans),var(--font-noto-thai),sans-serif]">
+                {item.label}
+              </span>
             </button>
           ))}
         </div>

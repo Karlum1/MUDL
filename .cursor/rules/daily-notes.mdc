@@ -1,0 +1,15 @@
+---
+description: Auto-create and fill Daily notes without the user asking
+alwaysApply: true
+---
+
+# Daily notes (Bangkok calendar)
+
+Do this without waiting for the user to say «สรุปลง Daily».
+
+- Path: `Daily/YYYY-MM-DD.md` using **Asia/Bangkok** date (not UTC).
+- If today's file is missing, create it with `# YYYY-MM-DD` and `## MUDL`.
+- After finishing a real task (feature, fix, deploy, git branch), append a short Thai summary under that heading. Match existing Daily tone: bullets, what changed, what the user must do (Publish rules, Vercel, etc.).
+- Do not rewrite the whole file. Do not duplicate the same bullet if it is already there.
+- Skip for questions-only turns with no project change.
+- Never commit Daily files unless the user asked to commit.

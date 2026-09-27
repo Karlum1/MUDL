@@ -1,7 +1,7 @@
 import { Timestamp } from "firebase-admin/firestore";
 import { getAdminDb, isAdminConfigured } from "@/lib/admin";
 import { sendPushAndPrune } from "@/lib/pushCleanup";
-import { FINISHED_STALE_MS, remainingCycleMinutes } from "@/lib/cycleTiming";
+import { FINISHED_STALE_MINUTES, FINISHED_STALE_MS, remainingCycleMinutes } from "@/lib/cycleTiming";
 import { bangkokHour, bangkokMinute } from "@/lib/day";
 
 const FREE_MACHINE = {
@@ -87,7 +87,7 @@ export async function runLaundryTick() {
       await logAdmin(
         machine.id,
         "auto_release",
-        "ปล่อยเครื่องว่างอัตโนมัติ หลังผ้าค้างเกิน 20 นาที",
+        `ปล่อยเครื่องว่างอัตโนมัติ หลังผ้าค้างเกิน ${FINISHED_STALE_MINUTES} นาที`,
       );
       freeIds.add(machine.id);
       continue;
@@ -98,7 +98,7 @@ export async function runLaundryTick() {
       await logAdmin(
         machine.id,
         "auto_release",
-        "ปล่อยเครื่องว่างอัตโนมัติ หลังผ้าค้างเกิน 20 นาที",
+        `ปล่อยเครื่องว่างอัตโนมัติ หลังผ้าค้างเกิน ${FINISHED_STALE_MINUTES} นาที`,
       );
       freeIds.add(machine.id);
       continue;
