@@ -8,6 +8,7 @@ import { useEffect, useId, useRef, useState } from "react";
 export function ThemeToggle() {
   const locale = useLocale();
   const [pref, setPref] = useState<ThemePref>("auto");
+  const [ready, setReady] = useState(false);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
@@ -19,15 +20,16 @@ export function ThemeToggle() {
 
   useEffect(() => {
     setPref(readPref());
+    setReady(true);
   }, []);
 
   useEffect(() => {
-    if (pref !== "auto") return;
+    if (!ready || pref !== "auto") return;
     const sync = () => applyPref("auto");
     sync();
     const id = window.setInterval(sync, 60_000);
     return () => window.clearInterval(id);
-  }, [pref]);
+  }, [pref, ready]);
 
   useEffect(() => {
     if (!open) return;

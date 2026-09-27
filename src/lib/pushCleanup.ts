@@ -45,9 +45,11 @@ export async function sendPushAndPrune(
     const result = await messaging.sendEachForMulticast({
       tokens: chunk,
       data: { title, body, tag, url: "/" },
+      notification: { title, body },
       webpush: {
+        notification: { title, body, tag, renotify: true },
         fcmOptions: { link: "/" },
-        headers: { Urgency: "high" },
+        headers: { Urgency: "high", TTL: "86400" },
       },
     });
     sent += result.successCount;

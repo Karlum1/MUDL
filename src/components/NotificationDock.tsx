@@ -33,6 +33,13 @@ export function NotificationDock({
   }, []);
 
   useEffect(() => {
+    if (!uid || typeof Notification === "undefined" || Notification.permission !== "granted") return;
+    void registerWebPush(uid).then((result) => {
+      if (result.ok) setEnabled(true);
+    });
+  }, [uid]);
+
+  useEffect(() => {
     return subscribeAnnouncements(setAnnouncements, () => undefined);
   }, []);
 

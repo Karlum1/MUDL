@@ -10,6 +10,7 @@ importScripts("https://www.gstatic.com/firebasejs/12.19.0/firebase-messaging-com
 firebase.initializeApp(${JSON.stringify(config)});
 const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
+  if (payload.notification) return;
   const title = payload.data?.title || payload.notification?.title || "ซักผ้าหอพัก";
   const body = payload.data?.body || payload.notification?.body || "";
   const tag = payload.data?.tag || "laundry";

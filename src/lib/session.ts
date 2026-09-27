@@ -73,6 +73,8 @@ export function isStandaloneDisplay() {
   );
 }
 
+let foregroundPushListening = false;
+
 export async function registerWebPush(uid: string) {
   try {
     if (!isFirebaseConfigured()) return { ok: false, error: "ยังไม่ได้ตั้งค่า Firebase" };
@@ -133,13 +135,16 @@ export async function registerWebPush(uid: string) {
       updatedAt: Date.now(),
     });
 
-    onMessage(messaging, (payload) => {
-      const title = payload.data?.title ?? payload.notification?.title ?? "ซักผ้าหอพัก";
-      const body = payload.data?.body ?? payload.notification?.body ?? "";
-      if (Notification.permission === "granted") {
-        new Notification(title, { body, tag: payload.data?.tag });
-      }
-    });
+    if (!foregroundPushListening) {
+      foregroundPushListening = true;
+      onMessage(messaging, (payload) => {
+        const title = payload.data?.title ?? payload.notification?.title ?? "ซักผ้าหอพัก";
+        const body = payload.data?.body ?? payload.notification?.body ?? "";
+        if (Notification.permission === "granted") {
+          new Notification(title, { body, tag: payload.data?.tag ?? payload.notification?.tag });
+        }
+      });
+    }
 
     return { ok: true as const };
   } catch (err) {
