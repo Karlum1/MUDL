@@ -141,7 +141,7 @@ export async function registerWebPush(uid: string) {
         const title = payload.data?.title ?? payload.notification?.title ?? "ซักผ้าหอพัก";
         const body = payload.data?.body ?? payload.notification?.body ?? "";
         if (Notification.permission === "granted") {
-          new Notification(title, { body, tag: payload.data?.tag ?? payload.notification?.tag });
+          new Notification(title, { body, tag: payload.data?.tag });
         }
       });
     }
