@@ -17,7 +17,7 @@ function WrenchIcon({ className }: { className?: string }) {
         stroke="currentColor"
         strokeWidth="2"
         strokeLinecap="round"
-        strokeJoin="round"
+        strokeLinejoin="round"
       />
     </svg>
   );
