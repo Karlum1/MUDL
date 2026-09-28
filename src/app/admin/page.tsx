@@ -23,12 +23,14 @@ const VIEW_KEY = "wm-admin-view-v1";
 type AdminView = {
   sections: { qr: boolean; machines: boolean; announce: boolean; graphs: boolean; logs: boolean };
   dormIds: string[];
+  qrDormIds: string[];
   logKinds: { report: boolean; maintenance: boolean; reopen: boolean; command: boolean };
 };
 
 const DEFAULT_VIEW: AdminView = {
   sections: { qr: true, machines: true, announce: true, graphs: true, logs: true },
   dormIds: DORMS.map((dorm) => dorm.id),
+  qrDormIds: DORMS.map((dorm) => dorm.id),
   logKinds: { report: true, maintenance: true, reopen: true, command: true },
 };
 
@@ -41,9 +43,13 @@ function loadAdminView(): AdminView {
     const dormIds = Array.isArray(parsed.dormIds)
       ? parsed.dormIds.filter((id) => DORMS.some((dorm) => dorm.id === id))
       : DEFAULT_VIEW.dormIds;
+    const qrDormIds = Array.isArray(parsed.qrDormIds)
+      ? parsed.qrDormIds.filter((id) => DORMS.some((dorm) => dorm.id === id))
+      : DEFAULT_VIEW.qrDormIds;
     return {
       sections: { ...DEFAULT_VIEW.sections, ...parsed.sections },
       dormIds: dormIds.length > 0 ? dormIds : DEFAULT_VIEW.dormIds,
+      qrDormIds: qrDormIds.length > 0 ? qrDormIds : DEFAULT_VIEW.qrDormIds,
       logKinds: { ...DEFAULT_VIEW.logKinds, ...parsed.logKinds },
     };
   } catch {
@@ -533,9 +539,35 @@ export default function AdminPage() {
             </button>
             </div>
           </div>
+          <p className="mt-4 text-sm font-semibold text-foreground print:hidden">หอที่จะพิมพ์</p>
+          <div className="mt-2 flex flex-wrap gap-2 print:hidden">
+            {DORMS.map((dorm) => {
+              const on = view.qrDormIds.includes(dorm.id);
+              return (
+                <button
+                  key={dorm.id}
+                  type="button"
+                  onClick={() =>
+                    setView((current) => {
+                      const has = current.qrDormIds.includes(dorm.id);
+                      const next = has
+                        ? current.qrDormIds.filter((id) => id !== dorm.id)
+                        : [...current.qrDormIds, dorm.id];
+                      return { ...current, qrDormIds: next.length > 0 ? next : current.qrDormIds };
+                    })
+                  }
+                  className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
+                    on ? "bg-accent text-accent-fg" : "bg-chip text-muted ring-1 ring-line"
+                  }`}
+                >
+                  {dorm.name}
+                </button>
+              );
+            })}
+          </div>
           <div className="mt-6">
             <QrPoster
-              machines={SEED_MACHINES.filter((item) => view.dormIds.includes(item.dormId)).map((item) => {
+              machines={SEED_MACHINES.filter((item) => view.qrDormIds.includes(item.dormId)).map((item) => {
                 const dorm = dormById(item.dormId);
                 return {
                   id: item.id,
