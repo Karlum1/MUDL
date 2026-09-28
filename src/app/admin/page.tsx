@@ -9,7 +9,7 @@ import {
   subscribeAnnouncements,
   subscribeMaintenanceLogs,
 } from "@/lib/machines";
-import { subscribeUsageHours, subscribeUsageMonth } from "@/lib/dailyStats";
+import { subscribeUsageMonth } from "@/lib/dailyStats";
 import { DORMS, SEED_MACHINES, dormById } from "@/lib/dorms";
 import { bangkokMonthLabel, bangkokDateKey, bangkokDateLabel, bangkokClockLabel } from "@/lib/day";
 import { STATUS_COPY } from "@/lib/status";
@@ -18,6 +18,38 @@ import type { Announcement, MaintenanceLog } from "@/lib/types";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 const PIN_KEY = "wm-admin-pin-v1";
+const VIEW_KEY = "wm-admin-view-v1";
+
+type AdminView = {
+  sections: { qr: boolean; machines: boolean; announce: boolean; graphs: boolean; logs: boolean };
+  dormIds: string[];
+  logKinds: { report: boolean; maintenance: boolean; reopen: boolean; command: boolean };
+};
+
+const DEFAULT_VIEW: AdminView = {
+  sections: { qr: true, machines: true, announce: true, graphs: true, logs: true },
+  dormIds: DORMS.map((dorm) => dorm.id),
+  logKinds: { report: true, maintenance: true, reopen: true, command: true },
+};
+
+function loadAdminView(): AdminView {
+  if (typeof window === "undefined") return DEFAULT_VIEW;
+  try {
+    const raw = localStorage.getItem(VIEW_KEY);
+    if (!raw) return DEFAULT_VIEW;
+    const parsed = JSON.parse(raw) as Partial<AdminView>;
+    const dormIds = Array.isArray(parsed.dormIds)
+      ? parsed.dormIds.filter((id) => DORMS.some((dorm) => dorm.id === id))
+      : DEFAULT_VIEW.dormIds;
+    return {
+      sections: { ...DEFAULT_VIEW.sections, ...parsed.sections },
+      dormIds: dormIds.length > 0 ? dormIds : DEFAULT_VIEW.dormIds,
+      logKinds: { ...DEFAULT_VIEW.logKinds, ...parsed.logKinds },
+    };
+  } catch {
+    return DEFAULT_VIEW;
+  }
+}
 
 async function adminRequest(pin: string, payload: Record<string, unknown>) {
   const res = await fetch("/api/admin", {
@@ -47,13 +79,13 @@ export default function AdminPage() {
   const [note, setNote] = useState("");
   const [messageTh, setMessageTh] = useState("");
   const [pushToo, setPushToo] = useState(true);
-  const [hours, setHours] = useState<number[]>(() => Array.from({ length: 24 }, () => 0));
   const [monthCount, setMonthCount] = useState(0);
   const [monthDays, setMonthDays] = useState<number[]>([]);
-  const [hoverHour, setHoverHour] = useState<number | null>(null);
   const [hoverDay, setHoverDay] = useState<number | null>(null);
   const [logs, setLogs] = useState<MaintenanceLog[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [view, setView] = useState<AdminView>(DEFAULT_VIEW);
+  const [viewReady, setViewReady] = useState(false);
 
   useEffect(() => {
     const saved = sessionStorage.getItem(PIN_KEY);
@@ -64,8 +96,21 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => {
+    setView(loadAdminView());
+    setViewReady(true);
+  }, []);
+
+  useEffect(() => {
+    if (!viewReady) return;
+    try {
+      localStorage.setItem(VIEW_KEY, JSON.stringify(view));
+    } catch {
+      /* quota */
+    }
+  }, [view, viewReady]);
+
+  useEffect(() => {
     if (!unlocked) return;
-    const unsubHours = subscribeUsageHours(setHours, () => undefined);
     const unsubMonth = subscribeUsageMonth((summary) => {
       setMonthCount(summary.total);
       setMonthDays(summary.byDay);
@@ -73,21 +118,11 @@ export default function AdminPage() {
     const unsubLogs = subscribeMaintenanceLogs(setLogs, () => undefined);
     const unsubNews = subscribeAnnouncements(setAnnouncements, () => undefined);
     return () => {
-      unsubHours();
       unsubMonth();
       unsubLogs();
       unsubNews();
     };
   }, [unlocked]);
-
-  const peak = useMemo(() => {
-    const max = Math.max(1, ...hours);
-    const total = hours.reduce((sum, n) => sum + n, 0);
-    const avg = total / 24;
-    const peakHour = hours.indexOf(Math.max(...hours));
-    const chartPx = Math.round(Math.min(360, Math.max(176, 120 + avg * 56)));
-    return { max, peakHour, total, avg, chartPx };
-  }, [hours]);
 
   const monthPeak = useMemo(() => {
     const max = Math.max(1, ...monthDays);
@@ -96,14 +131,21 @@ export default function AdminPage() {
     return { max, avg, chartPx };
   }, [monthDays, monthCount]);
 
-  const repairLogs = useMemo(
-    () => logs.filter((log) => ["report", "maintenance", "reopen"].includes(log.action)),
-    [logs],
-  );
-  const commandLogs = useMemo(
-    () => logs.filter((log) => !["report", "maintenance", "reopen"].includes(log.action)),
-    [logs],
-  );
+  const repairLogs = useMemo(() => {
+    return logs.filter((log) => {
+      const kind =
+        log.action === "report"
+          ? "report"
+          : log.action === "maintenance"
+            ? "maintenance"
+            : log.action === "reopen"
+              ? "reopen"
+              : "command";
+      if (!view.logKinds[kind]) return false;
+      if (view.dormIds.length === DORMS.length || log.machineId === "all") return true;
+      return view.dormIds.some((id) => log.machineId.startsWith(`${id}-`));
+    });
+  }, [logs, view.logKinds, view.dormIds]);
 
   async function run(payload: Record<string, unknown>) {
     setPending(true);
@@ -166,7 +208,7 @@ export default function AdminPage() {
             </button>
             {error && <p className="text-sm text-bad">{error}</p>}
           </form>
-        </main>
+      </main>
       </div>
     );
   }
@@ -184,55 +226,157 @@ export default function AdminPage() {
         {error && <p className="text-sm text-bad">{error}</p>}
 
         <section className="rounded-3xl border border-line bg-surface p-5">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <h2 className="font-semibold text-foreground">QR สำหรับติดเครื่อง</h2>
-              <p className="mt-1 max-w-2xl text-sm text-muted">
-                พิมพ์แล้วติดที่เครื่อง — เปิดลิงก์อย่างเดียวเริ่มรอบไม่ได้ ต้องสแกนด้วยกล้องในแอป
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              onClick={() => window.print()}
-              className="rounded-xl bg-chip px-3 py-2 text-xs font-semibold text-foreground"
-            >
-              พิมพ์ QR
-            </button>
-            <button
-              type="button"
-              disabled={pending}
-              onClick={() => {
-                setPending(true);
-                setError(null);
-                void seedMachinesIfEmpty(true)
-                  .catch((err) => setError(actionErrorMessage(err)))
-                  .finally(() => setPending(false));
-              }}
-              className="rounded-xl bg-chip px-3 py-2 text-xs font-semibold text-foreground disabled:opacity-50"
-            >
-              ซิงค์รายชื่อเครื่อง
-            </button>
-            </div>
+          <h2 className="font-semibold text-foreground">แสดงในหน้านี้</h2>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(
+              [
+                ["graphs", "กราฟ"],
+                ["logs", "ประวัติซ่อมและคำสั่ง"],
+                ["machines", "คำสั่งเครื่อง"],
+                ["announce", "ประกาศ"],
+                ["qr", "คิวอาร์"],
+              ] as const
+            ).map(([key, label]) => {
+              const on = view.sections[key];
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() =>
+                    setView((current) => ({
+                      ...current,
+                      sections: { ...current.sections, [key]: !current.sections[key] },
+                    }))
+                  }
+                  className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
+                    on ? "bg-accent text-accent-fg" : "bg-chip text-muted ring-1 ring-line"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
-          <div className="mt-6">
-            <QrPoster
-              machines={SEED_MACHINES.map((item) => {
-                const dorm = dormById(item.dormId);
-                return {
-                  id: item.id,
-                  label: item.label,
-                  dormId: item.dormId,
-                  dormName: dorm?.name ?? "",
-                  halls: dorm?.halls ?? "",
-                };
-              })}
-            />
+          <p className="mt-4 text-sm font-semibold text-foreground">หอ</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {DORMS.map((dorm) => {
+              const on = view.dormIds.includes(dorm.id);
+              return (
+                <button
+                  key={dorm.id}
+                  type="button"
+                  onClick={() =>
+                    setView((current) => {
+                      const has = current.dormIds.includes(dorm.id);
+                      const next = has
+                        ? current.dormIds.filter((id) => id !== dorm.id)
+                        : [...current.dormIds, dorm.id];
+                      return { ...current, dormIds: next.length > 0 ? next : current.dormIds };
+                    })
+                  }
+                  className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
+                    on ? "bg-accent text-accent-fg" : "bg-chip text-muted ring-1 ring-line"
+                  }`}
+                >
+                  {dorm.name}
+                </button>
+              );
+            })}
           </div>
         </section>
 
+          {view.sections.graphs && (
+        <section className="rounded-3xl border border-line bg-surface p-5">
+          <h2 className="font-semibold text-foreground">การใช้รายวันเดือนนี้</h2>
+          <p className="mt-1 text-sm text-muted">
+            เดือน {bangkokMonthLabel(bangkokDateKey().slice(0, 7))} มีผู้ใช้ {monthCount} รอบ
+            {monthPeak.avg > 0 ? ` · เฉลี่ย ${monthPeak.avg.toFixed(1)} รอบ/วัน` : ""}
+          </p>
+          <div className="relative mt-4" onMouseLeave={() => setHoverDay(null)}>
+            <div className="relative flex items-end gap-0.5" style={{ height: monthPeak.chartPx }}>
+              {monthPeak.avg > 0 && (
+                <div
+                  className="pointer-events-none absolute right-0 left-0 z-10 border-t border-dashed border-amber-200/70"
+                  style={{ bottom: `${(monthPeak.avg / monthPeak.max) * 100}%` }}
+                />
+              )}
+              {monthDays.map((count, index) => (
+                <div key={index} className="flex h-full min-w-0 flex-1 items-end">
+                  <div
+                    className={`w-full rounded-t ${
+                      hoverDay === index ? "bg-emerald-200" : "bg-emerald-400/80"
+                    }`}
+                    style={{ height: `${(count / monthPeak.max) * 100}%`, minHeight: count ? 3 : 0 }}
+                    onMouseEnter={() => setHoverDay(index)}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="mt-1 flex gap-0.5">
+              {monthDays.map((_, index) => (
+                <p
+                  key={index}
+                  className={`min-w-0 flex-1 text-center text-[8px] leading-none ${
+                    (index + 1) % 5 === 0 || index === 0 ? "text-muted" : "text-transparent"
+                  }`}
+                >
+                  {index + 1}
+                </p>
+              ))}
+            </div>
+          </div>
+          <p className="mt-2 text-sm text-accent">
+            {hoverDay === null
+              ? "ชี้แท่งกราฟเพื่อดูจำนวนรอบในวันนั้น"
+              : `วันที่ ${hoverDay + 1} · ${monthDays[hoverDay]} รอบ`}
+          </p>
+        </section>
+        )}
+
+        {view.sections.logs && (
+        <section className="rounded-3xl border border-line bg-surface p-5">
+          <h2 className="font-semibold text-foreground">ประวัติซ่อมและคำสั่งผู้ดูแล</h2>
+          <p className="mt-1 text-sm text-muted">รายการใหม่จะโชว์ที่นี่ รายการเก่าถูกล้างแล้ว และของที่เกิน 7 วันจะถูกลบอัตโนมัติ</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            {(
+              [
+                ["report", "แจ้งเสีย"],
+                ["maintenance", "ปิดปรับปรุง"],
+                ["reopen", "เปิดใช้ใหม่"],
+                ["command", "คำสั่งผู้ดูแล"],
+              ] as const
+            ).map(([key, label]) => {
+              const on = view.logKinds[key];
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() =>
+                    setView((current) => ({
+                      ...current,
+                      logKinds: { ...current.logKinds, [key]: !current.logKinds[key] },
+                    }))
+                  }
+                  className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
+                    on ? "bg-accent text-accent-fg" : "bg-chip text-muted ring-1 ring-line"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          <LogList
+            key={`${view.dormIds.join(",")}:${Object.values(view.logKinds).join("")}`}
+            logs={repairLogs}
+            empty="ไม่มีรายการในตัวกรองนี้"
+          />
+        </section>
+        )}
+        {view.sections.machines && (
+        <>
         <section className="space-y-8">
-          {DORMS.map((dorm) => {
+          {DORMS.filter((dorm) => view.dormIds.includes(dorm.id)).map((dorm) => {
             const dormMachines = machines.filter((item) => item.dormId === dorm.id);
             if (dormMachines.length === 0) return null;
             return (
@@ -312,7 +456,10 @@ export default function AdminPage() {
             placeholder="เช่น มอเตอร์เสีย, ผ้าค้าง"
           />
         </label>
+        </>
+        )}
 
+        {view.sections.announce && (
         <section className="rounded-3xl border border-line bg-surface p-5">
           <h2 className="font-semibold text-foreground">ประกาศถึงลูกบ้าน</h2>
           <textarea
@@ -351,110 +498,58 @@ export default function AdminPage() {
             ))}
           </div>
         </section>
+        )}
 
+        {view.sections.qr && (
         <section className="rounded-3xl border border-line bg-surface p-5">
-          <h2 className="font-semibold text-foreground">ช่วงเวลาหนาแน่นวันนี้</h2>
-          <p className="mt-1 text-sm text-muted">
-            วันนี้ {peak.total} รอบ · เฉลี่ย {peak.avg.toFixed(1)} รอบ/ชม.
-            {peak.total > 0 ? ` · หนาแน่นสุด ${String(peak.peakHour).padStart(2, "0")}:00 น.` : ""}
-          </p>
-          <div className="relative mt-4" onMouseLeave={() => setHoverHour(null)}>
-            <div className="relative flex items-end gap-1" style={{ height: peak.chartPx }}>
-              {peak.avg > 0 && (
-                <div
-                  className="pointer-events-none absolute right-0 left-0 z-10 border-t border-dashed border-amber-200/70"
-                  style={{ bottom: `${(peak.avg / peak.max) * 100}%` }}
-                />
-              )}
-              {hours.map((count, hour) => (
-                <div key={hour} className="flex h-full min-w-0 flex-1 items-end">
-                  <div
-                    className={`w-full rounded-t ${
-                      hoverHour === hour ? "bg-accent-hover" : "bg-accent/80"
-                    }`}
-                    style={{ height: `${(count / peak.max) * 100}%`, minHeight: count ? 4 : 0 }}
-                    onMouseEnter={() => setHoverHour(hour)}
-                  />
-                </div>
-              ))}
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <h2 className="font-semibold text-foreground">QR สำหรับติดเครื่อง</h2>
+              <p className="mt-1 max-w-2xl text-sm text-muted">
+                พิมพ์แล้วติดที่เครื่อง — เปิดลิงก์อย่างเดียวเริ่มรอบไม่ได้ ต้องสแกนด้วยกล้องในแอป
+              </p>
             </div>
-            <div className="mt-1 flex gap-1">
-              {hours.map((_, hour) => (
-                <p
-                  key={hour}
-                  className={`min-w-0 flex-1 text-center text-[9px] leading-none ${
-                    hour % 3 === 0 ? "text-muted" : "text-transparent"
-                  }`}
-                >
-                  {String(hour).padStart(2, "0")}
-                </p>
-              ))}
+            <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => window.print()}
+              className="rounded-xl bg-chip px-3 py-2 text-xs font-semibold text-foreground"
+            >
+              พิมพ์ QR
+            </button>
+            <button
+              type="button"
+              disabled={pending}
+              onClick={() => {
+                setPending(true);
+                setError(null);
+                void seedMachinesIfEmpty(true)
+                  .catch((err) => setError(actionErrorMessage(err)))
+                  .finally(() => setPending(false));
+              }}
+              className="rounded-xl bg-chip px-3 py-2 text-xs font-semibold text-foreground disabled:opacity-50"
+            >
+              ซิงค์รายชื่อเครื่อง
+            </button>
             </div>
           </div>
-          <p className="mt-2 text-sm text-accent">
-            {hoverHour === null
-              ? "ชี้แท่งกราฟเพื่อดูจำนวนคนในชั่วโมงนั้น · ความสูงกราฟโตตามค่าเฉลี่ยวันนี้ · เส้นประ = ค่าเฉลี่ย"
-              : `${String(hoverHour).padStart(2, "0")}:00–${String(hoverHour).padStart(2, "0")}:59 น. · ${hours[hoverHour]} คน`}
-          </p>
-        </section>
-
-        <section className="rounded-3xl border border-line bg-surface p-5">
-          <h2 className="font-semibold text-foreground">การใช้รายวันเดือนนี้</h2>
-          <p className="mt-1 text-sm text-muted">
-            เดือน {bangkokMonthLabel(bangkokDateKey().slice(0, 7))} มีผู้ใช้ {monthCount} รอบ
-            {monthPeak.avg > 0 ? ` · เฉลี่ย ${monthPeak.avg.toFixed(1)} รอบ/วัน` : ""}
-          </p>
-          <div className="relative mt-4" onMouseLeave={() => setHoverDay(null)}>
-            <div className="relative flex items-end gap-0.5" style={{ height: monthPeak.chartPx }}>
-              {monthPeak.avg > 0 && (
-                <div
-                  className="pointer-events-none absolute right-0 left-0 z-10 border-t border-dashed border-amber-200/70"
-                  style={{ bottom: `${(monthPeak.avg / monthPeak.max) * 100}%` }}
-                />
-              )}
-              {monthDays.map((count, index) => (
-                <div key={index} className="flex h-full min-w-0 flex-1 items-end">
-                  <div
-                    className={`w-full rounded-t ${
-                      hoverDay === index ? "bg-emerald-200" : "bg-emerald-400/80"
-                    }`}
-                    style={{ height: `${(count / monthPeak.max) * 100}%`, minHeight: count ? 3 : 0 }}
-                    onMouseEnter={() => setHoverDay(index)}
-                  />
-                </div>
-              ))}
-            </div>
-            <div className="mt-1 flex gap-0.5">
-              {monthDays.map((_, index) => (
-                <p
-                  key={index}
-                  className={`min-w-0 flex-1 text-center text-[8px] leading-none ${
-                    (index + 1) % 5 === 0 || index === 0 ? "text-muted" : "text-transparent"
-                  }`}
-                >
-                  {index + 1}
-                </p>
-              ))}
-            </div>
+          <div className="mt-6">
+            <QrPoster
+              machines={SEED_MACHINES.filter((item) => view.dormIds.includes(item.dormId)).map((item) => {
+                const dorm = dormById(item.dormId);
+                return {
+                  id: item.id,
+                  label: item.label,
+                  dormId: item.dormId,
+                  dormName: dorm?.name ?? "",
+                  halls: dorm?.halls ?? "",
+                };
+              })}
+            />
           </div>
-          <p className="mt-2 text-sm text-accent">
-            {hoverDay === null
-              ? "ชี้แท่งกราฟเพื่อดูจำนวนรอบในวันนั้น"
-              : `วันที่ ${hoverDay + 1} · ${monthDays[hoverDay]} รอบ`}
-          </p>
         </section>
+        )}
 
-        <section className="rounded-3xl border border-line bg-surface p-5">
-          <h2 className="font-semibold text-foreground">ประวัติซ่อม</h2>
-          <p className="mt-1 text-sm text-muted">แจ้งเสียจากลูกบ้าน และปิด/เปิดเครื่องจากผู้ดูแล · ลบอัตโนมัติหลัง 7 วัน</p>
-          <LogList logs={repairLogs} empty="ยังไม่มีบันทึกซ่อม" />
-        </section>
-
-        <section className="rounded-3xl border border-line bg-surface p-5">
-          <h2 className="font-semibold text-foreground">คำสั่งผู้ดูแล</h2>
-          <p className="mt-1 text-sm text-muted">รีเซ็ต ประกาศ และปล่อยผ้าค้างอัตโนมัติ · ลบอัตโนมัติหลัง 7 วัน</p>
-          <LogList logs={commandLogs} empty="ยังไม่มีคำสั่ง" />
-        </section>
       </main>
     </div>
   );

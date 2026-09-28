@@ -33,12 +33,6 @@ export function SiteHeader({ connected }: { connected?: boolean }) {
             <span className="hidden min-[380px]:inline">{t(locale, "scanQr")}</span>
           </Link>
           <Link
-            href="/me"
-            className="rounded-full px-2 py-2 text-muted hover:text-foreground sm:px-4"
-          >
-            {t(locale, "myCycles")}
-          </Link>
-          <Link
             href="/board"
             className="hidden rounded-full px-4 py-2 text-muted hover:text-foreground sm:inline"
           >

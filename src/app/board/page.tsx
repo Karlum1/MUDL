@@ -7,7 +7,6 @@ import { displayOwnerName } from "@/lib/machines";
 import { STATUS_COPY } from "@/lib/status";
 import { bangkokDateKey, bangkokDateLabel } from "@/lib/day";
 import { useMachineLive } from "@/hooks/useMachineLive";
-import { RepairFab } from "@/components/RepairFab";
 import { useLocale } from "@/components/AppProviders";
 import { t, statusLabel } from "@/lib/i18n";
 import { useEffect, useRef, useState } from "react";
@@ -167,7 +166,6 @@ export default function BoardPage() {
           );
         })}
       </main>
-      <RepairFab />
     </div>
   );
 }

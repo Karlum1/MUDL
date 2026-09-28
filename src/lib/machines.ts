@@ -492,35 +492,3 @@ export async function releaseWithClaim(id: string, secret: string, action: "coll
   forgetClaim(id);
 }
 
-export type UsageRow = {
-  id: string;
-  phone: string;
-  machineId: string;
-  machineLabel: string;
-  ownerName: string;
-  createdAt: number;
-};
-
-export async function listUsageByPhone(phone: string): Promise<UsageRow[]> {
-  const normalized = normalizeOwnerPhone(phone);
-  if (!normalized) return [];
-  await ensureAnonymousUser();
-  const db = getFirebaseDb();
-  const snap = await getDocs(
-    query(collection(db, USAGE_EVENTS_COLLECTION), where("phone", "==", normalized)),
-  );
-  return snap.docs
-    .map((item) => {
-      const data = item.data();
-      return {
-        id: item.id,
-        phone: String(data.phone ?? ""),
-        machineId: String(data.machineId ?? ""),
-        machineLabel: String(data.machineLabel ?? data.machineId ?? ""),
-        ownerName: String(data.ownerName ?? ""),
-        createdAt: millisFromTimestamp(data.createdAt) ?? 0,
-      };
-    })
-    .sort((a, b) => b.createdAt - a.createdAt)
-    .slice(0, 30);
-}

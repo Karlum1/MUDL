@@ -93,5 +93,19 @@ export async function runAdminCommand(body: {
     return { ok: true, pushed };
   }
 
+  if (body.action === "clearLogs") {
+    let removed = 0;
+    for (;;) {
+      const snap = await db.collection("maintenanceLogs").limit(400).get();
+      if (snap.empty) break;
+      const batch = db.batch();
+      for (const item of snap.docs) batch.delete(item.ref);
+      await batch.commit();
+      removed += snap.size;
+      if (snap.size < 400) break;
+    }
+    return { ok: true, removed };
+  }
+
   throw new Error("UNKNOWN_ACTION");
 }
