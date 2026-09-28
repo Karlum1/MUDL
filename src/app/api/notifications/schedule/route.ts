@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { getAdminAuth, getAdminDb, isAdminConfigured } from "@/lib/admin";
+import { getAdminDb, isAdminConfigured } from "@/lib/admin";
 import { scheduleFinishPush } from "@/lib/scheduleFinish";
+import { verifyFirebaseIdToken } from "@/lib/verifyIdToken";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ export async function POST(request: Request) {
 
   let uid = "";
   try {
-    uid = (await getAdminAuth().verifyIdToken(idToken)).uid;
+    uid = await verifyFirebaseIdToken(idToken);
   } catch {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
