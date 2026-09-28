@@ -45,6 +45,10 @@ export function getAdminDb() {
   return getFirestore(getAdminApp());
 }
 
+export function getAdminAuth() {
+  return getAuth(getAdminApp());
+}
+
 export function getAdminMessaging() {
   return getMessaging(getAdminApp());
 }
