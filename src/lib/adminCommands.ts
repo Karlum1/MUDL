@@ -15,6 +15,7 @@ const CLEAR_MACHINE = {
   ownerPhone: null,
   ticketNumber: null,
   reservedUntil: null,
+  claimHash: null,
   maintenanceNote: null,
 };
 

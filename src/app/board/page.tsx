@@ -8,36 +8,86 @@ import { STATUS_COPY } from "@/lib/status";
 import { bangkokDateKey, bangkokDateLabel } from "@/lib/day";
 import { useMachineLive } from "@/hooks/useMachineLive";
 import { RepairFab } from "@/components/RepairFab";
-import { LanguageFlip } from "@/components/LanguageFlip";
-import { ThemeToggle } from "@/components/ThemeToggle";
 import { useLocale } from "@/components/AppProviders";
 import { t, statusLabel } from "@/lib/i18n";
-import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 
 export default function BoardPage() {
   const locale = useLocale();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const sawLive = useRef(false);
+  const [fullscreen, setFullscreen] = useState(false);
   const { machines, connected } = useMachineLive({
     dormIds: [...PUBLIC_DORM_IDS],
   });
   const dateKey = bangkokDateKey();
   const visibleDorms = DORMS.filter((dorm) => machines.some((item) => item.dormId === dorm.id));
 
+  useEffect(() => {
+    let lock: WakeLockSentinel | null = null;
+    async function stayAwake() {
+      try {
+        lock = await navigator.wakeLock?.request("screen");
+      } catch {
+        /* the browser may require a tap first */
+      }
+    }
+    void stayAwake();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") void stayAwake();
+    };
+    const onFull = () => setFullscreen(document.fullscreenElement === rootRef.current);
+    document.addEventListener("visibilitychange", onVisible);
+    document.addEventListener("fullscreenchange", onFull);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisible);
+      document.removeEventListener("fullscreenchange", onFull);
+      void lock?.release();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (connected) {
+      sawLive.current = true;
+      return;
+    }
+    if (!sawLive.current) return;
+    const timer = window.setTimeout(() => window.location.reload(), 8000);
+    return () => window.clearTimeout(timer);
+  }, [connected]);
+
+  async function toggleFullscreen() {
+    const node = rootRef.current;
+    if (!node) return;
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        return;
+      }
+      await node.requestFullscreen();
+    } catch {
+      /* some browsers block fullscreen without a direct gesture */
+    }
+  }
+
   return (
-    <div className="flex min-h-full flex-col bg-background text-foreground">
+    <div ref={rootRef} className="flex min-h-screen flex-col bg-background text-foreground">
       <header className="flex items-center justify-between px-6 py-4">
         <div>
           <p className="text-xs tracking-[0.18em] text-accent">{"Scan&Wash"}</p>
           <h1 className="text-2xl font-semibold">{t(locale, "boardTitle")} · {bangkokDateLabel(dateKey)}</h1>
         </div>
         <div className="flex shrink-0 items-center gap-3 text-sm">
-          <LanguageFlip />
-          <ThemeToggle />
           <span className={connected ? "text-ok" : "text-warn"}>
             {connected ? t(locale, "live") : t(locale, "connecting")}
           </span>
-          <Link href="/" className="text-muted hover:text-foreground">
-            {t(locale, "backApp")}
-          </Link>
+          <button
+            type="button"
+            onClick={() => void toggleFullscreen()}
+            className="rounded-full bg-accent px-4 py-2 font-semibold text-accent-fg"
+          >
+            {fullscreen ? t(locale, "boardExitFull") : t(locale, "boardFullscreen")}
+          </button>
         </div>
       </header>
 

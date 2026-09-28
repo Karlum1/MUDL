@@ -35,8 +35,6 @@ export function getFirebaseAuth(): Auth {
 }
 
 export const MACHINES_COLLECTION = "machines";
-export const TICKETS_COLLECTION = "tickets";
-export const COUNTERS_COLLECTION = "counters";
 export const PUSH_TOKENS_COLLECTION = "pushTokens";
 export const ANNOUNCEMENTS_COLLECTION = "announcements";
 export const MAINTENANCE_LOGS_COLLECTION = "maintenanceLogs";

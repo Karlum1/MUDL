@@ -36,7 +36,12 @@ export default function HomePage() {
             </div>
           )}
 
-          {configured && error && (
+          {configured && error === "OFFLINE_STALE" && (
+            <div className="mt-6 rounded-3xl border border-amber-400/40 bg-amber-400/15 p-5 text-sm text-foreground">
+              {t(locale, "offlineStale")}
+            </div>
+          )}
+          {configured && error && error !== "OFFLINE_STALE" && (
             <div className="mt-6 rounded-3xl border border-rose-400/40 bg-rose-400/15 p-5 text-sm text-foreground">
               {t(locale, "firestoreFail")}: {error}
             </div>

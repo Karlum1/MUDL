@@ -13,6 +13,7 @@ import { subscribeUsageHours, subscribeUsageMonth } from "@/lib/dailyStats";
 import { DORMS, SEED_MACHINES, dormById } from "@/lib/dorms";
 import { bangkokMonthLabel, bangkokDateKey, bangkokDateLabel, bangkokClockLabel } from "@/lib/day";
 import { STATUS_COPY } from "@/lib/status";
+import { repairCategoryLabel } from "@/lib/repairCategories";
 import type { Announcement, MaintenanceLog } from "@/lib/types";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
@@ -187,7 +188,7 @@ export default function AdminPage() {
             <div>
               <h2 className="font-semibold text-foreground">QR สำหรับติดเครื่อง</h2>
               <p className="mt-1 max-w-2xl text-sm text-muted">
-                พิมพ์แล้วติดที่เครื่อง — สแกนแล้วเปิดหน้าตั้งเวลา (`?scan=1`)
+                พิมพ์แล้วติดที่เครื่อง — เปิดลิงก์อย่างเดียวเริ่มรอบไม่ได้ ต้องสแกนด้วยกล้องในแอป
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
@@ -445,24 +446,14 @@ export default function AdminPage() {
 
         <section className="rounded-3xl border border-line bg-surface p-5">
           <h2 className="font-semibold text-foreground">ประวัติซ่อม</h2>
-          <p className="mt-1 text-sm text-muted">แจ้งเสียจากลูกบ้าน และปิด/เปิดเครื่องจากผู้ดูแล</p>
-          <div className="mt-4 space-y-2">
-            {repairLogs.length === 0 && <p className="text-sm text-muted">ยังไม่มีบันทึกซ่อม</p>}
-            {repairLogs.map((log) => (
-              <LogRow key={log.id} log={log} />
-            ))}
-          </div>
+          <p className="mt-1 text-sm text-muted">แจ้งเสียจากลูกบ้าน และปิด/เปิดเครื่องจากผู้ดูแล · ลบอัตโนมัติหลัง 7 วัน</p>
+          <LogList logs={repairLogs} empty="ยังไม่มีบันทึกซ่อม" />
         </section>
 
         <section className="rounded-3xl border border-line bg-surface p-5">
           <h2 className="font-semibold text-foreground">คำสั่งผู้ดูแล</h2>
-          <p className="mt-1 text-sm text-muted">รีเซ็ต ประกาศ และปล่อยผ้าค้างอัตโนมัติ</p>
-          <div className="mt-4 space-y-2">
-            {commandLogs.length === 0 && <p className="text-sm text-muted">ยังไม่มีคำสั่ง</p>}
-            {commandLogs.map((log) => (
-              <LogRow key={log.id} log={log} />
-            ))}
-          </div>
+          <p className="mt-1 text-sm text-muted">รีเซ็ต ประกาศ และปล่อยผ้าค้างอัตโนมัติ · ลบอัตโนมัติหลัง 7 วัน</p>
+          <LogList logs={commandLogs} empty="ยังไม่มีคำสั่ง" />
         </section>
       </main>
     </div>
@@ -478,16 +469,68 @@ const ACTION_LABEL: Record<string, string> = {
   auto_release: "ปล่อยผ้าค้าง",
 };
 
+const LOG_PAGE_SIZE = 8;
+
+function LogList({ logs, empty }: { logs: MaintenanceLog[]; empty: string }) {
+  const [page, setPage] = useState(0);
+  const pages = Math.max(1, Math.ceil(logs.length / LOG_PAGE_SIZE));
+  const safePage = Math.min(page, pages - 1);
+  const visible = logs.slice(safePage * LOG_PAGE_SIZE, safePage * LOG_PAGE_SIZE + LOG_PAGE_SIZE);
+
+  return (
+    <div className="mt-4">
+      {logs.length === 0 ? (
+        <p className="text-sm text-muted">{empty}</p>
+      ) : (
+        <div className="space-y-2">
+          {visible.map((log) => (
+            <LogRow key={log.id} log={log} />
+          ))}
+        </div>
+      )}
+      {logs.length > LOG_PAGE_SIZE && (
+        <div className="mt-3 flex items-center justify-between gap-3 text-sm">
+          <button
+            type="button"
+            className="rounded-full border border-line px-3 py-1.5 text-foreground disabled:opacity-40"
+            disabled={safePage === 0}
+            onClick={() => setPage(safePage - 1)}
+          >
+            ก่อนหน้า
+          </button>
+          <p className="text-muted">
+            หน้า {safePage + 1} / {pages}
+          </p>
+          <button
+            type="button"
+            className="rounded-full border border-line px-3 py-1.5 text-foreground disabled:opacity-40"
+            disabled={safePage >= pages - 1}
+            onClick={() => setPage(safePage + 1)}
+          >
+            ถัดไป
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function LogRow({ log }: { log: MaintenanceLog }) {
   const when = log.createdAt
     ? `${bangkokDateLabel(bangkokDateKey(new Date(log.createdAt)))} ${bangkokClockLabel(log.createdAt)}`
     : "";
+  const category = repairCategoryLabel(log.category, "th");
   return (
     <article className="rounded-2xl bg-chip px-4 py-3 text-sm">
       <p className="text-foreground">
         {ACTION_LABEL[log.action] ?? log.action} · {log.machineId}
       </p>
-      <p className="mt-1 text-muted">{log.note}</p>
+      {category && (
+        <p className="mt-2 inline-flex rounded-full bg-accent px-3 py-1 text-sm font-semibold text-accent-fg">
+          {category}
+        </p>
+      )}
+      <p className={`text-foreground ${category ? "mt-2 text-base" : "mt-1"}`}>{log.note}</p>
       {when && <p className="mt-1 text-xs text-muted">{when}</p>}
     </article>
   );

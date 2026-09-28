@@ -1,7 +1,8 @@
 "use client";
 
 import { actionErrorMessage } from "@/lib/errors";
-import { machineAction } from "@/hooks/useMachineLive";
+import { machineAction, machineActionWithCode } from "@/hooks/useMachineLive";
+import { readClaim } from "@/lib/claimCode";
 import { MAX_OWNER_NAME, MAX_OWNER_PHONE, displayOwnerName } from "@/lib/machines";
 import {
   DRY_MINUTES,
@@ -21,7 +22,7 @@ import { WasherDial } from "@/components/WasherDial";
 import { WatchBell } from "@/components/WatchBell";
 import { useLocale } from "@/components/AppProviders";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { prepareFinishAlert } from "@/lib/session";
 
 export function MachineActions({
@@ -40,11 +41,17 @@ export function MachineActions({
   const [ownerPhone, setOwnerPhone] = useState("");
   const [customWash, setCustomWash] = useState(30);
   const [customDry, setCustomDry] = useState(40);
+  const [claimCode, setClaimCode] = useState<string | null>(null);
+  const [typedCode, setTypedCode] = useState("");
   const copy = STATUS_COPY[machine.status];
   const verb = cycleCopy(machine.kind, machine.cycleMode, locale);
-  const isMine = Boolean(uid && machine.ownerUid === uid);
-  const canStart =
-    scanned && (machine.status === "available" || machine.status === "reserved");
+  const isOwner = Boolean(uid && machine.ownerUid === uid);
+  const isMine = isOwner || Boolean(claimCode);
+  const canStart = scanned && machine.status === "available";
+
+  useEffect(() => {
+    setClaimCode(readClaim(machine.id)?.secret ?? null);
+  }, [machine.id, machine.status]);
 
   async function run(
     action: "start" | "collect" | "cancel",
@@ -59,7 +66,10 @@ export function MachineActions({
     setError(null);
     try {
       if (action === "start" && !scanned) throw new Error("SCAN_REQUIRED");
-      const work = machineAction(machine.id, action, minutes, ownerName, ownerPhone, mode);
+      const useCode = Boolean(claimCode) && !isOwner && action !== "start";
+      const work = useCode
+        ? machineActionWithCode(machine.id, action, claimCode ?? "")
+        : machineAction(machine.id, action, minutes, ownerName, ownerPhone, mode);
       let timer = 0;
       try {
         await Promise.race([
@@ -71,6 +81,7 @@ export function MachineActions({
       } finally {
         window.clearTimeout(timer);
       }
+      if (action === "start") setClaimCode(readClaim(machine.id)?.secret ?? null);
     } catch (err) {
       setError(actionErrorMessage(err));
     } finally {
@@ -144,7 +155,7 @@ export function MachineActions({
         </div>
       )}
 
-      {(machine.status === "available" || machine.status === "reserved") && !scanned && (
+      {machine.status === "available" && !scanned && (
         <div className="mt-8 rounded-2xl border border-amber-400/40 bg-amber-400/15 p-4 text-sm leading-6 text-warn">
           <p className="font-semibold">{t(locale, "scanOnlyTitle")}</p>
           <p className="mt-1 opacity-90">{t(locale, "scanOnlyBody")}</p>
@@ -246,6 +257,14 @@ export function MachineActions({
         </div>
       )}
 
+      {claimCode && (machine.status === "in_use" || machine.status === "finished") && (
+        <div className="mt-6 rounded-2xl border border-accent/40 bg-accent/10 p-4">
+          <p className="text-sm font-semibold text-foreground">{t(locale, "claimTitle")}</p>
+          <p className="mt-1 font-mono text-2xl tracking-[0.2em] text-accent">{claimCode}</p>
+          <p className="mt-2 text-sm leading-6 text-foreground">{t(locale, "claimBody")}</p>
+        </div>
+      )}
+
       {machine.status === "in_use" && isMine && (
         <button
           type="button"
@@ -277,10 +296,48 @@ export function MachineActions({
       )}
 
       {machine.status === "finished" && !isMine && (
-        <p className="mt-8 text-sm text-warn">
-          {t(locale, "waitingFor")} {displayOwnerName(machine.ownerName, locale)} {verb.collect}
-          {machine.ownerPhone ? ` · ${t(locale, "call")} ${machine.ownerPhone}` : ""} {t(locale, "waitCollect")}
-        </p>
+        <div className="mt-8">
+          <p className="text-sm text-warn">
+            {t(locale, "waitingFor")} {displayOwnerName(machine.ownerName, locale)} {verb.collect}
+            {machine.ownerPhone ? ` · ${t(locale, "call")} ${machine.ownerPhone}` : ""} {t(locale, "waitCollect")}
+          </p>
+          <form
+            className="mt-4 grid gap-2"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void (async () => {
+                setPending(true);
+                setError(null);
+                try {
+                  await machineActionWithCode(machine.id, "collect", typedCode);
+                  setTypedCode("");
+                } catch (err) {
+                  setError(actionErrorMessage(err));
+                } finally {
+                  setPending(false);
+                }
+              })();
+            }}
+          >
+            <label className="text-sm font-semibold text-foreground">
+              {t(locale, "collectWithCode")}
+              <input
+                value={typedCode}
+                onChange={(event) => setTypedCode(event.target.value)}
+                placeholder={t(locale, "claimPlaceholder")}
+                autoComplete="off"
+                className="mt-2 w-full rounded-2xl border border-line bg-field px-4 py-3 font-mono tracking-widest text-foreground outline-none focus:ring-2 focus:ring-accent/40"
+              />
+            </label>
+            <button
+              type="submit"
+              disabled={pending || typedCode.trim().length < 8}
+              className="rounded-2xl bg-amber-300 px-4 py-4 text-base font-semibold text-slate-950 hover:bg-amber-200 disabled:opacity-60"
+            >
+              {t(locale, "collected")}
+            </button>
+          </form>
+        </div>
       )}
 
       {machine.status === "maintenance" && (

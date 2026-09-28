@@ -6,6 +6,7 @@ import { PUBLIC_DORM_IDS, SEED_MACHINES, dormById, type DormId } from "@/lib/dor
 import { actionErrorMessage } from "@/lib/errors";
 import { t } from "@/lib/i18n";
 import { reportMachineIssue } from "@/lib/machines";
+import { REPAIR_CATEGORIES, repairCategoryLabel, type RepairCategoryId } from "@/lib/repairCategories";
 import { usePathname } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 
@@ -30,6 +31,7 @@ export function RepairFab() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [machineId, setMachineId] = useState("");
+  const [category, setCategory] = useState<RepairCategoryId | "">("");
   const [note, setNote] = useState("");
   const [pending, setPending] = useState(false);
   const [done, setDone] = useState(false);
@@ -74,15 +76,19 @@ export function RepairFab() {
       setError(t(locale, "reportNeedMachine"));
       return;
     }
+    if (!category) {
+      setError(t(locale, "reportCategory"));
+      return;
+    }
     setPending(true);
     setError(null);
     try {
-      await reportMachineIssue(
-        machineId,
-        note.trim() || (locale === "en" ? "Broken machine" : "แจ้งเครื่องเสีย"),
-      );
+      const label = repairCategoryLabel(category, locale);
+      const detail = note.trim();
+      await reportMachineIssue(machineId, detail ? `${label}: ${detail}` : label, category);
       setDone(true);
       setNote("");
+      setCategory("");
     } catch (err) {
       setError(actionErrorMessage(err));
     } finally {
@@ -138,14 +144,37 @@ export function RepairFab() {
                     ))}
                   </select>
                 </label>
-                <textarea
-                  value={note}
-                  onChange={(event) => setNote(event.target.value)}
-                  maxLength={200}
-                  rows={3}
-                  placeholder={t(locale, "reportNotePh")}
-                  className="mt-3 w-full rounded-2xl border border-line bg-field px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-accent/40"
-                />
+                <p className="mt-4 text-sm font-semibold text-foreground">{t(locale, "reportCategory")}</p>
+                <div className="mt-2 grid grid-cols-2 gap-2">
+                  {REPAIR_CATEGORIES.map((item) => {
+                    const selected = category === item.id;
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        onClick={() => setCategory(item.id)}
+                        className={`rounded-2xl px-3 py-3 text-left text-sm font-semibold ${
+                          selected
+                            ? "bg-accent text-accent-fg"
+                            : "bg-chip text-foreground ring-1 ring-line"
+                        }`}
+                      >
+                        {locale === "en" ? item.en : item.th}
+                      </button>
+                    );
+                  })}
+                </div>
+                <label className="mt-4 block text-sm font-semibold text-foreground">
+                  {t(locale, "reportDetail")}
+                  <textarea
+                    value={note}
+                    onChange={(event) => setNote(event.target.value)}
+                    maxLength={160}
+                    rows={3}
+                    placeholder={t(locale, "reportNotePh")}
+                    className="mt-2 w-full rounded-2xl border border-line bg-field px-3 py-2 text-sm font-normal text-foreground outline-none focus:ring-2 focus:ring-accent/40"
+                  />
+                </label>
               </>
             )}
             <div className="mt-3 flex gap-2">

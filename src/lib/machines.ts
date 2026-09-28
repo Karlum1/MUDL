@@ -29,8 +29,10 @@ import {
   MACHINES_COLLECTION,
   ANNOUNCEMENTS_COLLECTION,
   MAINTENANCE_LOGS_COLLECTION,
+  USAGE_EVENTS_COLLECTION,
   getFirebaseDb,
 } from "@/lib/firebase";
+import { forgetClaim, hashClaimSecret, saveClaim, createClaimSecret } from "@/lib/claimCode";
 import { writeMyCycle } from "@/lib/session";
 import { ALMOST_LEAD_MS } from "@/lib/cycleTiming";
 import type {
@@ -57,13 +59,13 @@ function millisFromTimestamp(value: unknown): number | null {
 export function machineFromDoc(id: string, data: DocumentData): Machine {
   const finishTime = millisFromTimestamp(data.finishTime);
   const almostAt = millisFromTimestamp(data.almostAt);
-  const reservedUntil = millisFromTimestamp(data.reservedUntil);
-  const rawStatus = (data.status as MachineStatus) ?? "available";
-  let status = rawStatus;
+  const rawStatus = String(data.status ?? "available");
+  let status: MachineStatus =
+    rawStatus === "in_use" || rawStatus === "finished" || rawStatus === "maintenance"
+      ? rawStatus
+      : "available";
   if (rawStatus === "in_use" && finishTime && Date.now() >= finishTime) {
     status = "finished";
-  } else if (rawStatus === "reserved") {
-    status = "available";
   }
 
   const seed = seedForId(id);
@@ -94,7 +96,6 @@ export function machineFromDoc(id: string, data: DocumentData): Machine {
     ownerUid: typeof data.ownerUid === "string" ? data.ownerUid : null,
     ownerName: typeof data.ownerName === "string" ? data.ownerName : null,
     ownerPhone: typeof data.ownerPhone === "string" && data.ownerPhone.trim() ? data.ownerPhone.trim() : null,
-    reservedUntil,
     maintenanceNote: typeof data.maintenanceNote === "string" ? data.maintenanceNote : null,
   };
 }
@@ -279,11 +280,11 @@ export function subscribeMaintenanceLogs(
             machineId: String(data.machineId ?? ""),
             action: String(data.action ?? ""),
             note: String(data.note ?? ""),
+            category: String(data.category ?? ""),
             createdAt: millisFromTimestamp(data.createdAt) ?? 0,
           } satisfies MaintenanceLog;
         })
-        .sort((a, b) => b.createdAt - a.createdAt)
-        .slice(0, 80);
+        .sort((a, b) => b.createdAt - a.createdAt);
       onNext(items);
     },
     (error) => onError?.(error),
@@ -308,7 +309,7 @@ export function displayOwnerName(
   return locale === "en" ? "Anonymous" : ANON_OWNER_NAME;
 }
 
-export async function reportMachineIssue(id: string, note: string) {
+export async function reportMachineIssue(id: string, note: string, category = "") {
   await ensureAnonymousUser();
   const db = getFirebaseDb();
   const text = note.trim().slice(0, 200) || "แจ้งเครื่องเสีย";
@@ -316,6 +317,7 @@ export async function reportMachineIssue(id: string, note: string) {
     machineId: id,
     action: "report",
     note: text,
+    category: category.slice(0, 32),
     createdAt: Timestamp.now(),
   });
 }
@@ -329,6 +331,8 @@ export async function startMachine(
 ) {
   const name = normalizeOwnerName(ownerName);
   const phone = normalizeOwnerPhone(ownerPhone);
+  const claimSecret = createClaimSecret();
+  const claimHash = await hashClaimSecret(claimSecret);
   const user = await ensureAnonymousUser();
   const db = getFirebaseDb();
   const ref = doc(db, MACHINES_COLLECTION, id);
@@ -370,6 +374,7 @@ export async function startMachine(
         ownerPhone: phone || null,
         reservedUntil: null,
         ticketNumber: null,
+        claimHash,
       });
       return { finishTime: finishTime.toMillis() };
     }),
@@ -385,10 +390,18 @@ export async function startMachine(
     finishTime: result.finishTime,
     startedAt: Date.now(),
   });
+  saveClaim({ machineId: id, secret: claimSecret, phone, startedAt: Date.now() });
+  void addDoc(collection(db, USAGE_EVENTS_COLLECTION), {
+    phone: phone || null,
+    machineId: id,
+    machineLabel: seedForId(id)?.label ?? id,
+    ownerName: name,
+    createdAt: Timestamp.now(),
+  }).catch(() => undefined);
 
   void bumpDailyStats("booking").catch(() => undefined);
 
-  return result;
+  return { ...result, claimSecret };
 }
 
 export async function markMachineFinished(id: string) {
@@ -431,6 +444,8 @@ const FREE_MACHINE = {
   ownerPhone: null,
   ticketNumber: null,
   reservedUntil: null,
+  claimHash: null,
+  finishAlertSent: false,
 };
 
 export async function collectClothes(id: string) {
@@ -462,4 +477,50 @@ async function releaseMachine(
   });
 
   writeMyCycle(null);
+  forgetClaim(id);
+}
+
+export async function releaseWithClaim(id: string, secret: string, action: "collect" | "cancel") {
+  const response = await fetch("/api/machines/release", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ machineId: id, secret, action }),
+  });
+  const data = (await response.json().catch(() => null)) as { error?: string } | null;
+  if (!response.ok) throw new Error(data?.error || "RELEASE_FAILED");
+  writeMyCycle(null);
+  forgetClaim(id);
+}
+
+export type UsageRow = {
+  id: string;
+  phone: string;
+  machineId: string;
+  machineLabel: string;
+  ownerName: string;
+  createdAt: number;
+};
+
+export async function listUsageByPhone(phone: string): Promise<UsageRow[]> {
+  const normalized = normalizeOwnerPhone(phone);
+  if (!normalized) return [];
+  await ensureAnonymousUser();
+  const db = getFirebaseDb();
+  const snap = await getDocs(
+    query(collection(db, USAGE_EVENTS_COLLECTION), where("phone", "==", normalized)),
+  );
+  return snap.docs
+    .map((item) => {
+      const data = item.data();
+      return {
+        id: item.id,
+        phone: String(data.phone ?? ""),
+        machineId: String(data.machineId ?? ""),
+        machineLabel: String(data.machineLabel ?? data.machineId ?? ""),
+        ownerName: String(data.ownerName ?? ""),
+        createdAt: millisFromTimestamp(data.createdAt) ?? 0,
+      };
+    })
+    .sort((a, b) => b.createdAt - a.createdAt)
+    .slice(0, 30);
 }

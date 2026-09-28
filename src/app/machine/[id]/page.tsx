@@ -5,7 +5,7 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { useLocale } from "@/components/AppProviders";
 import { useMachineLive } from "@/hooks/useMachineLive";
 import { t } from "@/lib/i18n";
-import { grantMachineScan, hasValidMachineScan } from "@/lib/session";
+import { hasValidMachineScan } from "@/lib/session";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
@@ -23,10 +23,7 @@ function MachinePageInner() {
     const id = params.id;
     if (!id) return;
     if (searchParams.get("scan") === "1") {
-      grantMachineScan(id);
-      setScanned(true);
       router.replace(`/machine/${id}`);
-      return;
     }
     setScanned(hasValidMachineScan(id));
   }, [params.id, searchParams, router]);

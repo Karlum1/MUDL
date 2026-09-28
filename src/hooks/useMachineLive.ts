@@ -6,6 +6,7 @@ import {
   collectClothes,
   markAlmostAlertSent,
   markMachineFinished,
+  releaseWithClaim,
   seedMachinesIfEmpty,
   startMachine,
   subscribeMachines,
@@ -15,6 +16,7 @@ import type { AlertEvent, Machine } from "@/lib/types";
 import { remainingCycleMinutes } from "@/lib/cycleTiming";
 import { playFinishRingtone, unlockSfx } from "@/lib/sfx";
 import { readLocale } from "@/lib/i18n";
+import { readMachineCache, writeMachineCache } from "@/lib/machineCache";
 import { registerAndScheduleFinish } from "@/lib/session";
 import { subscribeMyWatches } from "@/lib/watches";
 import { useAnonymousSession } from "@/hooks/useAnonymousSession";
@@ -102,6 +104,12 @@ export function MachineLiveProvider({ children }: { children: ReactNode }) {
     else interestsRef.current.set(key, query);
     const merged = mergeInterests([...interestsRef.current.values()]);
     setScopeKey(merged ? JSON.stringify(merged) : "idle");
+  }, []);
+
+  useEffect(() => {
+    const cached = readMachineCache();
+    if (cached.length === 0) return;
+    setState((prev) => (prev.machines.length > 0 ? prev : { ...prev, machines: cached }));
   }, []);
 
   useEffect(() => {
@@ -199,11 +207,20 @@ export function MachineLiveProvider({ children }: { children: ReactNode }) {
                 }
               }
               prevRef.current = new Map(machines.map((item) => [item.id, item]));
+              writeMachineCache(machines);
               return { ...prev, machines, alerts, connected: true, error: null };
             });
           },
           (error) => {
-            setState((prev) => ({ ...prev, connected: false, error: error.message }));
+            setState((prev) => {
+              const machines = prev.machines.length > 0 ? prev.machines : readMachineCache();
+              return {
+                ...prev,
+                machines,
+                connected: false,
+                error: machines.length > 0 ? "OFFLINE_STALE" : error.message,
+              };
+            });
           },
           scope,
         );
@@ -291,13 +308,22 @@ export async function machineAction(
   cycleMode?: "wash" | "dry",
 ) {
   if (action === "start") {
-    await startMachine(id, minutes ?? 30, ownerName ?? "", ownerPhone ?? "", cycleMode);
+    const started = await startMachine(id, minutes ?? 30, ownerName ?? "", ownerPhone ?? "", cycleMode);
     void registerAndScheduleFinish(id);
-    return;
+    return { claimSecret: started.claimSecret };
   }
   if (action === "cancel") {
     await cancelCycle(id);
-    return;
+    return {};
   }
   await collectClothes(id);
+  return {};
+}
+
+export async function machineActionWithCode(
+  id: string,
+  action: "collect" | "cancel",
+  secret: string,
+) {
+  await releaseWithClaim(id, secret, action);
 }

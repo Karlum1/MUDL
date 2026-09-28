@@ -1,9 +1,4 @@
-export type MachineStatus =
-  | "available"
-  | "reserved"
-  | "in_use"
-  | "finished"
-  | "maintenance";
+export type MachineStatus = "available" | "in_use" | "finished" | "maintenance";
 
 export type Machine = {
   id: string;
@@ -25,7 +20,6 @@ export type Machine = {
   ownerUid: string | null;
   ownerName: string | null;
   ownerPhone: string | null;
-  reservedUntil: number | null;
   maintenanceNote: string | null;
 };
 
@@ -41,34 +35,11 @@ export type MaintenanceLog = {
   machineId: string;
   action: string;
   note: string;
+  category: string;
   createdAt: number;
 };
 
-export type TicketStatus =
-  | "waiting"
-  | "called"
-  | "in_use"
-  | "done"
-  | "expired"
-  | "cancelled";
-
-export type QueueTicket = {
-  id: string;
-  dateKey: string;
-  number: number;
-  uid: string;
-  status: TicketStatus;
-  machineId: string | null;
-  createdAt: number;
-  calledAt: number | null;
-};
-
-export type AlertKind =
-  | "almost_done"
-  | "finished"
-  | "available"
-  | "your_turn"
-  | "queue_joined";
+export type AlertKind = "almost_done" | "finished" | "available";
 
 export type AlertEvent = {
   id: string;
@@ -81,7 +52,7 @@ export type AlertEvent = {
 
 export const MY_CYCLE_KEY = "wm-my-cycle-v1";
 export const SCAN_SESSION_PREFIX = "wm-scan-v1:";
-export const SCAN_TTL_MS = 15 * 60 * 1000;
+export const SCAN_TTL_MS = 3 * 60 * 1000;
 
 export type MyCycle = {
   uid: string;

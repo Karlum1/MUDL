@@ -18,6 +18,7 @@ const FREE_MACHINE = {
   ownerPhone: null,
   ticketNumber: null,
   reservedUntil: null,
+  claimHash: null,
 };
 
 async function logAdmin(machineId: string, action: string, note: string) {
@@ -31,6 +32,7 @@ async function logAdmin(machineId: string, action: string, note: string) {
 }
 
 const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const CLEANUP_BATCH = 400;
 
 async function deleteOldDocs(collectionName: string, cutoff: Timestamp) {
@@ -49,9 +51,10 @@ async function deleteOldDocs(collectionName: string, cutoff: Timestamp) {
 
 async function cleanupStaleLogs() {
   if (bangkokHour() !== 3 || bangkokMinute() !== 0) return 0;
-  const cutoff = Timestamp.fromMillis(Date.now() - THIRTY_DAYS_MS);
-  const usage = await deleteOldDocs("usageEvents", cutoff);
-  const logs = await deleteOldDocs("maintenanceLogs", cutoff);
+  const usageCutoff = Timestamp.fromMillis(Date.now() - THIRTY_DAYS_MS);
+  const logCutoff = Timestamp.fromMillis(Date.now() - WEEK_MS);
+  const usage = await deleteOldDocs("usageEvents", usageCutoff);
+  const logs = await deleteOldDocs("maintenanceLogs", logCutoff);
   return usage + logs;
 }
 
