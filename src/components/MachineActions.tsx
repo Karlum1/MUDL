@@ -22,6 +22,7 @@ import { WatchBell } from "@/components/WatchBell";
 import { useLocale } from "@/components/AppProviders";
 import Link from "next/link";
 import { useState } from "react";
+import { prepareFinishAlert } from "@/lib/session";
 
 export function MachineActions({
   machine,

@@ -15,6 +15,7 @@ import type { AlertEvent, Machine } from "@/lib/types";
 import { remainingCycleMinutes } from "@/lib/cycleTiming";
 import { playFinishRingtone, unlockSfx } from "@/lib/sfx";
 import { readLocale } from "@/lib/i18n";
+import { registerAndScheduleFinish } from "@/lib/session";
 import { subscribeMyWatches } from "@/lib/watches";
 import { useAnonymousSession } from "@/hooks/useAnonymousSession";
 import {
@@ -291,6 +292,7 @@ export async function machineAction(
 ) {
   if (action === "start") {
     await startMachine(id, minutes ?? 30, ownerName ?? "", ownerPhone ?? "", cycleMode);
+    void registerAndScheduleFinish(id);
     return;
   }
   if (action === "cancel") {

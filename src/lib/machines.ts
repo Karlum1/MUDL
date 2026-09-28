@@ -364,6 +364,7 @@ export async function startMachine(
         cycleMode: mode,
         almostAt: Timestamp.fromMillis(now + durationMs - warnLead),
         almostAlertSent: false,
+        finishAlertSent: false,
         ownerUid: user.uid,
         ownerName: name,
         ownerPhone: phone || null,

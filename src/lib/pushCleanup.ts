@@ -28,6 +28,13 @@ async function deleteDeadTokens(tokens: string[]) {
   );
 }
 
+export async function sendPushToUid(uid: string, title: string, body: string, tag: string) {
+  const db = getAdminDb();
+  const snap = await db.collection("pushTokens").where("uid", "==", uid).get();
+  const tokens = snap.docs.map((item) => item.id).filter(Boolean);
+  return sendPushAndPrune(tokens, title, body, tag);
+}
+
 export async function sendPushAndPrune(
   tokens: string[],
   title: string,

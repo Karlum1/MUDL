@@ -1,4 +1,4 @@
-import { getFirebaseApp, isFirebaseConfigured } from "@/lib/firebase";
+import { getFirebaseApp, getFirebaseAuth, getFirebaseDb, isFirebaseConfigured } from "@/lib/firebase";
 import {
   MY_CYCLE_KEY,
   SCAN_SESSION_PREFIX,
@@ -7,7 +7,6 @@ import {
 } from "@/lib/types";
 import { getMessaging, getToken, isSupported, onMessage } from "firebase/messaging";
 import { doc, setDoc } from "firebase/firestore";
-import { getFirebaseDb } from "@/lib/firebase";
 
 export function readMyCycle(): MyCycle | null {
   if (typeof window === "undefined") return null;
@@ -150,5 +149,36 @@ export async function registerWebPush(uid: string) {
   } catch (err) {
     const message = err instanceof Error ? err.message : "เปิดแจ้งเตือนไม่สำเร็จ";
     return { ok: false, error: message };
+  }
+}
+
+export async function prepareFinishAlert() {
+  if (typeof Notification === "undefined" || Notification.permission !== "default") return;
+  try {
+    await Notification.requestPermission();
+  } catch {
+    /* wash still starts */
+  }
+}
+
+export async function registerAndScheduleFinish(machineId: string) {
+  try {
+    if (!isFirebaseConfigured()) return;
+    const user = getFirebaseAuth().currentUser;
+    if (!user) return;
+    if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+      await registerWebPush(user.uid);
+    }
+    const idToken = await user.getIdToken();
+    await fetch("/api/notifications/schedule", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${idToken}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ machineId }),
+    });
+  } catch {
+    /* minute cron still sends the finish alert */
   }
 }

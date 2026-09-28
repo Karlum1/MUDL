@@ -9,6 +9,7 @@ const CLEAR_MACHINE = {
   cycleMode: null,
   almostAt: null,
   almostAlertSent: false,
+  finishAlertSent: false,
   ownerUid: null,
   ownerName: null,
   ownerPhone: null,

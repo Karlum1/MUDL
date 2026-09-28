@@ -1,6 +1,7 @@
 import { Timestamp } from "firebase-admin/firestore";
 import { getAdminDb, isAdminConfigured } from "@/lib/admin";
-import { sendPushAndPrune } from "@/lib/pushCleanup";
+import { sendPushToUid } from "@/lib/pushCleanup";
+import { deliverFinishAlert } from "@/lib/finishAlert";
 import { FINISHED_STALE_MINUTES, FINISHED_STALE_MS, remainingCycleMinutes } from "@/lib/cycleTiming";
 import { bangkokHour, bangkokMinute } from "@/lib/day";
 
@@ -11,19 +12,13 @@ const FREE_MACHINE = {
   cycleMode: null,
   almostAt: null,
   almostAlertSent: false,
+  finishAlertSent: false,
   ownerUid: null,
   ownerName: null,
   ownerPhone: null,
   ticketNumber: null,
   reservedUntil: null,
 };
-
-async function sendToUid(uid: string, title: string, body: string, tag: string) {
-  const db = getAdminDb();
-  const snap = await db.collection("pushTokens").where("uid", "==", uid).get();
-  const tokens = snap.docs.map((item) => item.id).filter(Boolean);
-  await sendPushAndPrune(tokens, title, body, tag);
-}
 
 async function logAdmin(machineId: string, action: string, note: string) {
   const db = getAdminDb();
@@ -105,15 +100,7 @@ export async function runLaundryTick() {
     }
 
     if (data.status === "in_use" && finishMs && finishMs <= now) {
-      await machine.ref.update({ status: "finished", almostAlertSent: true });
-      if (typeof data.ownerUid === "string") {
-        await sendToUid(
-          data.ownerUid,
-          "ซักเสร็จแล้ว",
-          `${data.label ?? machine.id} เสร็จแล้ว กรุณาเอาผ้าออก`,
-          `${machine.id}-finished`,
-        );
-      }
+      await deliverFinishAlert(machine.id);
     } else if (
       data.status === "in_use" &&
       almostMs &&
@@ -125,7 +112,7 @@ export async function runLaundryTick() {
     ) {
       await machine.ref.update({ almostAlertSent: true });
       const mins = remainingCycleMinutes(finishMs, now);
-      await sendToUid(
+      await sendPushToUid(
         data.ownerUid,
         "ใกล้เสร็จแล้ว",
         `${data.label ?? machine.id} ใกล้เสร็จแล้ว เหลืออีกประมาณ ${mins} นาที กรุณาเตรียมไปรับผ้า`,
@@ -165,7 +152,7 @@ export async function runLaundryTick() {
     const uid = String(data.uid ?? "");
     if (!freeIds.has(machineId) || !uid) continue;
     const label = labels.get(machineId) ?? machineId;
-    await sendToUid(uid, "เครื่องว่างแล้ว", `${label} ว่างแล้ว ไปสแกน QR ได้`, `${machineId}-free`);
+    await sendPushToUid(uid, "เครื่องว่างแล้ว", `${label} ว่างแล้ว ไปสแกน QR ได้`, `${machineId}-free`);
     await watch.ref.delete();
   }
 
