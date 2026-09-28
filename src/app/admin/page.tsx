@@ -22,14 +22,12 @@ const VIEW_KEY = "wm-admin-view-v1";
 
 type AdminView = {
   sections: { qr: boolean; machines: boolean; announce: boolean; graphs: boolean; logs: boolean };
-  dormIds: string[];
   qrDormIds: string[];
   logKinds: { report: boolean; maintenance: boolean; reopen: boolean; command: boolean };
 };
 
 const DEFAULT_VIEW: AdminView = {
   sections: { qr: true, machines: true, announce: true, graphs: true, logs: true },
-  dormIds: DORMS.map((dorm) => dorm.id),
   qrDormIds: DORMS.map((dorm) => dorm.id),
   logKinds: { report: true, maintenance: true, reopen: true, command: true },
 };
@@ -40,15 +38,11 @@ function loadAdminView(): AdminView {
     const raw = localStorage.getItem(VIEW_KEY);
     if (!raw) return DEFAULT_VIEW;
     const parsed = JSON.parse(raw) as Partial<AdminView>;
-    const dormIds = Array.isArray(parsed.dormIds)
-      ? parsed.dormIds.filter((id) => DORMS.some((dorm) => dorm.id === id))
-      : DEFAULT_VIEW.dormIds;
     const qrDormIds = Array.isArray(parsed.qrDormIds)
       ? parsed.qrDormIds.filter((id) => DORMS.some((dorm) => dorm.id === id))
       : DEFAULT_VIEW.qrDormIds;
     return {
       sections: { ...DEFAULT_VIEW.sections, ...parsed.sections },
-      dormIds: dormIds.length > 0 ? dormIds : DEFAULT_VIEW.dormIds,
       qrDormIds: qrDormIds.length > 0 ? qrDormIds : DEFAULT_VIEW.qrDormIds,
       logKinds: { ...DEFAULT_VIEW.logKinds, ...parsed.logKinds },
     };
@@ -147,11 +141,9 @@ export default function AdminPage() {
             : log.action === "reopen"
               ? "reopen"
               : "command";
-      if (!view.logKinds[kind]) return false;
-      if (view.dormIds.length === DORMS.length || log.machineId === "all") return true;
-      return view.dormIds.some((id) => log.machineId.startsWith(`${id}-`));
+      return view.logKinds[kind];
     });
-  }, [logs, view.logKinds, view.dormIds]);
+  }, [logs, view.logKinds]);
 
   async function run(payload: Record<string, unknown>) {
     setPending(true);
@@ -263,32 +255,6 @@ export default function AdminPage() {
               );
             })}
           </div>
-          <p className="mt-4 text-sm font-semibold text-foreground">หอ</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {DORMS.map((dorm) => {
-              const on = view.dormIds.includes(dorm.id);
-              return (
-                <button
-                  key={dorm.id}
-                  type="button"
-                  onClick={() =>
-                    setView((current) => {
-                      const has = current.dormIds.includes(dorm.id);
-                      const next = has
-                        ? current.dormIds.filter((id) => id !== dorm.id)
-                        : [...current.dormIds, dorm.id];
-                      return { ...current, dormIds: next.length > 0 ? next : current.dormIds };
-                    })
-                  }
-                  className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
-                    on ? "bg-accent text-accent-fg" : "bg-chip text-muted ring-1 ring-line"
-                  }`}
-                >
-                  {dorm.name}
-                </button>
-              );
-            })}
-          </div>
         </section>
 
           {view.sections.graphs && (
@@ -373,7 +339,7 @@ export default function AdminPage() {
             })}
           </div>
           <LogList
-            key={`${view.dormIds.join(",")}:${Object.values(view.logKinds).join("")}`}
+            key={Object.values(view.logKinds).join("")}
             logs={repairLogs}
             empty="ไม่มีรายการในตัวกรองนี้"
           />
@@ -382,7 +348,7 @@ export default function AdminPage() {
         {view.sections.machines && (
         <>
         <section className="space-y-8">
-          {DORMS.filter((dorm) => view.dormIds.includes(dorm.id)).map((dorm) => {
+          {DORMS.map((dorm) => {
             const dormMachines = machines.filter((item) => item.dormId === dorm.id);
             if (dormMachines.length === 0) return null;
             return (
