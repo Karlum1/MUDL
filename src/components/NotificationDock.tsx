@@ -23,6 +23,7 @@ export function NotificationDock({
   const [iosHint, setIosHint] = useState(false);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [sfxOn, setSfx] = useState(true);
+  const [ringTick, setRingTick] = useState(0);
 
   useEffect(() => {
     if (typeof Notification === "undefined") return;
@@ -53,6 +54,7 @@ export function NotificationDock({
     const result = await registerWebPush(uid);
     setPermission(typeof Notification !== "undefined" ? Notification.permission : "default");
     setEnabled(result.ok);
+    if (result.ok) setRingTick((tick) => tick + 1);
     if (!result.ok) setError(result.error);
     setPending(false);
   }
@@ -82,8 +84,13 @@ export function NotificationDock({
           type="button"
           onClick={() => void enablePush()}
           disabled={pending}
-          className="mt-4 w-full rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-accent-fg transition hover:bg-accent-hover disabled:opacity-60"
+          className={`mt-4 flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold transition disabled:opacity-60 ${
+            enabled
+              ? "bg-accent text-accent-fg hover:bg-accent-hover"
+              : "bg-chip text-foreground ring-1 ring-line hover:bg-surface"
+          }`}
         >
+          <NotifyBell on={enabled} play={ringTick} />
           {enabled ? t(locale, "pushOn") : pending ? t(locale, "pushPending") : t(locale, "pushEnable")}
         </button>
         {error && <p className="mt-2 text-xs text-bad">{error}</p>}
@@ -126,5 +133,49 @@ export function NotificationDock({
         ))}
       </div>
     </aside>
+  );
+}
+
+function NotifyBell({ on, play }: { on: boolean; play: number }) {
+  return (
+    <svg
+      key={play}
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+      className={`h-5 w-5 shrink-0 ${on ? "text-accent-fg" : "text-muted"} ${play > 0 ? "bell-wiggle" : ""}`}
+    >
+      <path
+        d="M10.27 21a2 2 0 0 0 3.46 0"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+      />
+      <path
+        d="M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.96 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.41 5.96-2.74 7.33z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+      />
+      {on && (
+        <>
+          <path
+            d="M4 2C2.8 3.7 2 5.7 2 8"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+          <path
+            d="M22 8c0-2.3-.8-4.3-2-6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+        </>
+      )}
+    </svg>
   );
 }
