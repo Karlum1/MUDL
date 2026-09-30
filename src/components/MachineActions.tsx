@@ -95,7 +95,10 @@ export function MachineActions({
         setFizzDry(mode === "dry");
         setFizz(true);
         if (typeof navigator.vibrate === "function") navigator.vibrate(50);
-        window.setTimeout(() => router.push("/"), 1600);
+        window.setTimeout(() => {
+          setFizz(false);
+          if (mode !== "dry") router.push("/");
+        }, 1800);
       }
     } catch (err) {
       setError(actionErrorMessage(err));
@@ -377,33 +380,55 @@ export function MachineActions({
 
 function FizzSplash({ dry }: { dry: boolean }) {
   const bubbles = [
-    { left: "6%", size: 16, delay: "0ms", dur: "1.6s", wide: 46 },
-    { left: "14%", size: 28, delay: "80ms", dur: "1.9s", wide: 72 },
-    { left: "22%", size: 12, delay: "160ms", dur: "1.5s", wide: 40 },
-    { left: "31%", size: 22, delay: "40ms", dur: "1.8s", wide: 64 },
-    { left: "40%", size: 10, delay: "220ms", dur: "1.55s", wide: 36 },
-    { left: "48%", size: 34, delay: "120ms", dur: "1.95s", wide: 86 },
-    { left: "57%", size: 14, delay: "200ms", dur: "1.65s", wide: 48 },
-    { left: "66%", size: 24, delay: "60ms", dur: "1.75s", wide: 70 },
-    { left: "74%", size: 11, delay: "260ms", dur: "1.5s", wide: 38 },
-    { left: "82%", size: 20, delay: "140ms", dur: "1.85s", wide: 60 },
-    { left: "90%", size: 15, delay: "30ms", dur: "1.7s", wide: 50 },
-    { left: "18%", size: 18, delay: "300ms", dur: "1.6s", wide: 54 },
-    { left: "52%", size: 26, delay: "180ms", dur: "1.9s", wide: 74 },
-    { left: "70%", size: 13, delay: "90ms", dur: "1.55s", wide: 42 },
+    { left: "6%", size: 16, delay: "0ms", dur: "1.6s" },
+    { left: "14%", size: 28, delay: "80ms", dur: "1.9s" },
+    { left: "22%", size: 12, delay: "160ms", dur: "1.5s" },
+    { left: "31%", size: 22, delay: "40ms", dur: "1.8s" },
+    { left: "40%", size: 10, delay: "220ms", dur: "1.55s" },
+    { left: "48%", size: 34, delay: "120ms", dur: "1.95s" },
+    { left: "57%", size: 14, delay: "200ms", dur: "1.65s" },
+    { left: "66%", size: 24, delay: "60ms", dur: "1.75s" },
+    { left: "74%", size: 11, delay: "260ms", dur: "1.5s" },
+    { left: "82%", size: 20, delay: "140ms", dur: "1.85s" },
+    { left: "90%", size: 15, delay: "30ms", dur: "1.7s" },
+    { left: "18%", size: 18, delay: "300ms", dur: "1.6s" },
+    { left: "52%", size: 26, delay: "180ms", dur: "1.9s" },
+    { left: "70%", size: 13, delay: "90ms", dur: "1.55s" },
   ];
+  const sparks = [
+    { left: "8%", size: 7, delay: "0ms", dur: "1.45s", drift: "14px", tone: "" },
+    { left: "16%", size: 12, delay: "40ms", dur: "1.8s", drift: "-18px", tone: "launch-spark-gold" },
+    { left: "24%", size: 5, delay: "120ms", dur: "1.55s", drift: "10px", tone: "launch-spark-red" },
+    { left: "33%", size: 10, delay: "20ms", dur: "1.7s", drift: "-12px", tone: "" },
+    { left: "41%", size: 6, delay: "180ms", dur: "1.5s", drift: "16px", tone: "launch-spark-gold" },
+    { left: "49%", size: 14, delay: "70ms", dur: "1.9s", drift: "-8px", tone: "" },
+    { left: "56%", size: 5, delay: "210ms", dur: "1.6s", drift: "12px", tone: "launch-spark-red" },
+    { left: "63%", size: 9, delay: "30ms", dur: "1.75s", drift: "-20px", tone: "launch-spark-gold" },
+    { left: "71%", size: 7, delay: "150ms", dur: "1.5s", drift: "9px", tone: "" },
+    { left: "78%", size: 11, delay: "90ms", dur: "1.85s", drift: "-14px", tone: "launch-spark-red" },
+    { left: "86%", size: 6, delay: "10ms", dur: "1.65s", drift: "18px", tone: "launch-spark-gold" },
+    { left: "93%", size: 8, delay: "200ms", dur: "1.55s", drift: "-10px", tone: "" },
+    { left: "12%", size: 4, delay: "260ms", dur: "1.4s", drift: "-16px", tone: "launch-spark-red" },
+    { left: "28%", size: 13, delay: "100ms", dur: "1.85s", drift: "8px", tone: "launch-spark-gold" },
+    { left: "45%", size: 5, delay: "240ms", dur: "1.5s", drift: "-11px", tone: "" },
+    { left: "60%", size: 8, delay: "60ms", dur: "1.7s", drift: "15px", tone: "launch-spark-gold" },
+    { left: "74%", size: 4, delay: "190ms", dur: "1.45s", drift: "-7px", tone: "launch-spark-red" },
+    { left: "88%", size: 10, delay: "130ms", dur: "1.8s", drift: "11px", tone: "" },
+  ];
+  const pieces = dry ? sparks : bubbles;
   return (
     <div className="pointer-events-none fixed inset-0 z-40 overflow-hidden bg-background/35" aria-hidden>
-      {bubbles.map((bubble, index) => (
+      {pieces.map((piece, index) => (
         <span
           key={index}
-          className={dry ? "launch-heat" : "launch-bubble"}
+          className={dry ? `launch-spark ${"tone" in piece ? piece.tone : ""}` : "launch-bubble"}
           style={{
-            left: bubble.left,
-            width: dry ? bubble.wide : bubble.size,
-            height: dry ? Math.max(10, Math.round(bubble.size * 0.45)) : bubble.size,
-            animationDelay: bubble.delay,
-            animationDuration: bubble.dur,
+            left: piece.left,
+            width: piece.size,
+            height: piece.size,
+            animationDelay: piece.delay,
+            animationDuration: piece.dur,
+            ...(dry && "drift" in piece ? { ["--drift" as string]: piece.drift } : {}),
           }}
         />
       ))}
