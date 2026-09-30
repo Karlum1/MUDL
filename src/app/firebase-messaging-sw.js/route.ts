@@ -17,6 +17,10 @@ messaging.onBackgroundMessage((payload) => {
   return self.registration.showNotification(title, {
     body,
     tag,
+    icon: "/icon.png",
+    renotify: true,
+    silent: false,
+    vibrate: [220, 120, 220, 120, 220],
     data: { url: payload.data?.url || "/" },
   });
 });

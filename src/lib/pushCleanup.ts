@@ -1,4 +1,5 @@
 import { getAdminDb, getAdminMessaging } from "@/lib/admin";
+import { appBaseUrl } from "@/lib/scheduleFinish";
 
 const DEAD_CODES = new Set([
   "messaging/registration-token-not-registered",
@@ -49,12 +50,22 @@ export async function sendPushAndPrune(
   let pruned = 0;
   for (let i = 0; i < unique.length; i += chunkSize) {
     const chunk = unique.slice(i, i + chunkSize);
+    const alertTag = `${tag}-${Date.now()}`;
+    const icon = appBaseUrl() ? `${appBaseUrl()}/icon.png` : "/icon.png";
     const result = await messaging.sendEachForMulticast({
       tokens: chunk,
-      data: { title, body, tag, url: "/" },
+      data: { title, body, tag: alertTag, url: "/" },
       notification: { title, body },
       webpush: {
-        notification: { title, body, tag, renotify: true },
+        notification: {
+          title,
+          body,
+          tag: alertTag,
+          icon,
+          renotify: true,
+          silent: false,
+          vibrate: [220, 120, 220, 120, 220],
+        },
         fcmOptions: { link: "/" },
         headers: { Urgency: "high", TTL: "86400" },
       },
