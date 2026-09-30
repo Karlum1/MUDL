@@ -23,6 +23,7 @@ import { WatchBell } from "@/components/WatchBell";
 import { useLocale } from "@/components/AppProviders";
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { prepareFinishAlert } from "@/lib/session";
 
 export function MachineActions({
@@ -35,6 +36,8 @@ export function MachineActions({
   scanned: boolean;
 }) {
   const locale = useLocale();
+  const router = useRouter();
+  const [alertsOn, setAlertsOn] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [ownerName, setOwnerName] = useState("");
@@ -44,6 +47,7 @@ export function MachineActions({
   const [claimCode, setClaimCode] = useState<string | null>(null);
   const [typedCode, setTypedCode] = useState("");
   const [fizz, setFizz] = useState(false);
+  const [fizzDry, setFizzDry] = useState(false);
   const copy = STATUS_COPY[machine.status];
   const verb = cycleCopy(machine.kind, machine.cycleMode, locale);
   const isOwner = Boolean(uid && machine.ownerUid === uid);
@@ -53,6 +57,10 @@ export function MachineActions({
   useEffect(() => {
     setClaimCode(readClaim(machine.id)?.secret ?? null);
   }, [machine.id, machine.status]);
+
+  useEffect(() => {
+    setAlertsOn(typeof Notification !== "undefined" && Notification.permission === "granted");
+  }, [machine.status]);
 
   async function run(
     action: "start" | "collect" | "cancel",
@@ -84,9 +92,10 @@ export function MachineActions({
       }
       if (action === "start") {
         setClaimCode(readClaim(machine.id)?.secret ?? null);
+        setFizzDry(mode === "dry");
         setFizz(true);
-        window.setTimeout(() => setFizz(false), 1800);
         if (typeof navigator.vibrate === "function") navigator.vibrate(50);
+        window.setTimeout(() => router.push("/"), 1600);
       }
     } catch (err) {
       setError(actionErrorMessage(err));
@@ -97,7 +106,7 @@ export function MachineActions({
 
   return (
     <div className="rounded-3xl border border-line bg-surface p-6">
-      {fizz && <FizzSplash />}
+      {fizz && <FizzSplash dry={fizzDry} />}
       <div className="flex flex-wrap gap-2">
         <span className={`inline-flex rounded-full px-3 py-1 text-xs ${copy.badge}`}>
           {statusLabel(copy, locale)}
@@ -164,7 +173,9 @@ export function MachineActions({
               )}
             </p>
           )}
-          {isMine && <p className="text-sm text-accent">{t(locale, "alertStandby")}</p>}
+          {isMine && (
+            <p className="text-sm text-accent">{t(locale, alertsOn ? "pushOn" : "alertOff")}</p>
+          )}
         </div>
       )}
 
@@ -364,33 +375,33 @@ export function MachineActions({
   );
 }
 
-function FizzSplash() {
+function FizzSplash({ dry }: { dry: boolean }) {
   const bubbles = [
-    { left: "6%", size: 16, delay: "0ms", dur: "1.6s" },
-    { left: "14%", size: 28, delay: "80ms", dur: "1.9s" },
-    { left: "22%", size: 12, delay: "160ms", dur: "1.5s" },
-    { left: "31%", size: 22, delay: "40ms", dur: "1.8s" },
-    { left: "40%", size: 10, delay: "220ms", dur: "1.55s" },
-    { left: "48%", size: 34, delay: "120ms", dur: "1.95s" },
-    { left: "57%", size: 14, delay: "200ms", dur: "1.65s" },
-    { left: "66%", size: 24, delay: "60ms", dur: "1.75s" },
-    { left: "74%", size: 11, delay: "260ms", dur: "1.5s" },
-    { left: "82%", size: 20, delay: "140ms", dur: "1.85s" },
-    { left: "90%", size: 15, delay: "30ms", dur: "1.7s" },
-    { left: "18%", size: 18, delay: "300ms", dur: "1.6s" },
-    { left: "52%", size: 26, delay: "180ms", dur: "1.9s" },
-    { left: "70%", size: 13, delay: "90ms", dur: "1.55s" },
+    { left: "6%", size: 16, delay: "0ms", dur: "1.6s", wide: 46 },
+    { left: "14%", size: 28, delay: "80ms", dur: "1.9s", wide: 72 },
+    { left: "22%", size: 12, delay: "160ms", dur: "1.5s", wide: 40 },
+    { left: "31%", size: 22, delay: "40ms", dur: "1.8s", wide: 64 },
+    { left: "40%", size: 10, delay: "220ms", dur: "1.55s", wide: 36 },
+    { left: "48%", size: 34, delay: "120ms", dur: "1.95s", wide: 86 },
+    { left: "57%", size: 14, delay: "200ms", dur: "1.65s", wide: 48 },
+    { left: "66%", size: 24, delay: "60ms", dur: "1.75s", wide: 70 },
+    { left: "74%", size: 11, delay: "260ms", dur: "1.5s", wide: 38 },
+    { left: "82%", size: 20, delay: "140ms", dur: "1.85s", wide: 60 },
+    { left: "90%", size: 15, delay: "30ms", dur: "1.7s", wide: 50 },
+    { left: "18%", size: 18, delay: "300ms", dur: "1.6s", wide: 54 },
+    { left: "52%", size: 26, delay: "180ms", dur: "1.9s", wide: 74 },
+    { left: "70%", size: 13, delay: "90ms", dur: "1.55s", wide: 42 },
   ];
   return (
     <div className="pointer-events-none fixed inset-0 z-40 overflow-hidden bg-background/35" aria-hidden>
       {bubbles.map((bubble, index) => (
         <span
           key={index}
-          className="launch-bubble"
+          className={dry ? "launch-heat" : "launch-bubble"}
           style={{
             left: bubble.left,
-            width: bubble.size,
-            height: bubble.size,
+            width: dry ? bubble.wide : bubble.size,
+            height: dry ? Math.max(10, Math.round(bubble.size * 0.45)) : bubble.size,
             animationDelay: bubble.delay,
             animationDuration: bubble.dur,
           }}

@@ -9,6 +9,7 @@ import { bangkokDateKey, bangkokDateLabel } from "@/lib/day";
 import { useMachineLive } from "@/hooks/useMachineLive";
 import { useLocale } from "@/components/AppProviders";
 import { t, statusLabel } from "@/lib/i18n";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 export default function BoardPage() {
@@ -87,6 +88,9 @@ export default function BoardPage() {
           >
             {fullscreen ? t(locale, "boardExitFull") : t(locale, "boardFullscreen")}
           </button>
+          <Link href="/" className="rounded-full px-3 py-2 font-semibold text-muted hover:text-foreground">
+            {t(locale, "backHome")}
+          </Link>
         </div>
       </header>
 
@@ -101,8 +105,7 @@ export default function BoardPage() {
           return (
             <section key={dorm.id}>
               <h2 className="mb-3 text-lg font-semibold">
-                {dorm.name}{" "}
-                <span className="text-sm font-normal text-muted">{dorm.halls}</span>
+                {dorm.name} ({dorm.halls})
               </h2>
               <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                 {dormMachines.map((machine) => {

@@ -43,9 +43,9 @@ function seq(from: number, to: number) {
 }
 
 function labelFor(look: MachineLook, n: number) {
-  if (look === "dryer") return `อบ ${n}`;
-  if (look === "combo") return `ซัก+อบ ${n}`;
-  return `ซัก ${n}`;
+  if (look === "dryer") return `เครื่องอบผ้า ${n}`;
+  if (look === "combo") return `เครื่องซักผ้า+อบ ${n}`;
+  return `เครื่องซักผ้า ${n}`;
 }
 
 function machineId(dormId: DormId, look: MachineLook, n: number) {

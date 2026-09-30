@@ -33,9 +33,11 @@ export function StatusGrid({
         const free = dormMachines.filter((m) => m.status === "available").length;
         return (
           <section key={dorm.id}>
-            <h2 className="mb-1 text-lg font-semibold text-foreground">{dorm.name}</h2>
+            <h2 className="mb-1 text-lg font-semibold text-foreground">
+              {dorm.name} ({dorm.halls})
+            </h2>
             <p className="mb-4 text-xs uppercase tracking-[0.16em] text-muted">
-              {dorm.halls} · {t(locale, "freeOf")} {free}/{dormMachines.length}
+              {t(locale, "freeOf")} {free}/{dormMachines.length}
             </p>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {dormMachines.map((machine) => (

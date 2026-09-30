@@ -10,25 +10,29 @@ import { t } from "@/lib/i18n";
 
 export default function HomePage() {
   const locale = useLocale();
-  const { machines, alerts, connected, configured, error, uid } = useMachineLive({
+  const { machines, connected, configured, error, uid } = useMachineLive({
     dormIds: [...PUBLIC_DORM_IDS],
   });
 
   return (
     <div className="flex min-h-full flex-col">
       <SiteHeader connected={connected} />
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8 lg:flex-row">
-        <div className="flex-1">
-          <p className="text-sm text-muted">{t(locale, "homeLead")}</p>
-          <h1 className="mt-2 text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
+      <main className="mx-auto grid w-full max-w-6xl flex-1 gap-8 px-4 py-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="lg:col-start-1">
+          <h1 className="text-3xl font-semibold tracking-tight text-foreground sm:text-4xl">
             {t(locale, "homeTitle")}
           </h1>
+        </div>
+        <div className="lg:col-start-2 lg:row-span-2 lg:row-start-1">
+          <NotificationDock uid={uid} />
+        </div>
+        <div className="lg:col-start-1">
           {machines.length === 0 && (
-            <p className="mt-3 max-w-xl text-muted">{t(locale, "waitingFirestore")}</p>
+            <p className="max-w-xl text-muted">{t(locale, "waitingFirestore")}</p>
           )}
 
           {!configured && (
-            <div className="mt-6 rounded-3xl border border-amber-400/40 bg-amber-400/15 p-5 text-sm leading-6 text-foreground">
+            <div className="rounded-3xl border border-amber-400/40 bg-amber-400/15 p-5 text-sm leading-6 text-foreground">
               <p className="font-semibold">{t(locale, "firebaseMissingTitle")}</p>
               <p className="mt-2 text-muted">
                 {t(locale, "firebaseMissingBody")}
@@ -37,22 +41,19 @@ export default function HomePage() {
           )}
 
           {configured && error === "OFFLINE_STALE" && (
-            <div className="mt-6 rounded-3xl border border-amber-400/40 bg-amber-400/15 p-5 text-sm text-foreground">
+            <div className="rounded-3xl border border-amber-400/40 bg-amber-400/15 p-5 text-sm text-foreground">
               {t(locale, "offlineStale")}
             </div>
           )}
           {configured && error && error !== "OFFLINE_STALE" && (
-            <div className="mt-6 rounded-3xl border border-rose-400/40 bg-rose-400/15 p-5 text-sm text-foreground">
+            <div className="rounded-3xl border border-rose-400/40 bg-rose-400/15 p-5 text-sm text-foreground">
               {t(locale, "firestoreFail")}: {error}
             </div>
           )}
 
-          <div className="mt-8">
+          <div className={machines.length === 0 || !configured || error ? "mt-8" : undefined}>
             <StatusGrid machines={machines} uid={uid} />
           </div>
-        </div>
-        <div className="w-full shrink-0 lg:w-80">
-          <NotificationDock alerts={alerts} uid={uid} />
         </div>
       </main>
     </div>

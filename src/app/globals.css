@@ -209,13 +209,23 @@ body {
   }
 }
 
-.launch-bubble {
+  .launch-bubble,
+  .launch-heat {
   position: absolute;
   bottom: -28px;
   border-radius: 999px;
   background: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, 0.95), rgba(103, 232, 249, 0.45) 42%, rgba(255, 255, 255, 0.12));
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.65);
   animation: bubble-float-up 1.8s ease-in forwards;
+}
+
+.launch-heat {
+  position: absolute;
+  bottom: -36px;
+  border-radius: 999px;
+  background: radial-gradient(ellipse at center, rgba(255, 237, 213, 0.15), rgba(251, 146, 60, 0.72) 46%, rgba(251, 146, 60, 0));
+  filter: blur(0.4px);
+  animation: bubble-float-up 1.8s ease-out forwards;
 }
 
 .drum-swirl {

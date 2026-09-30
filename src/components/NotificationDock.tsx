@@ -5,16 +5,10 @@ import { isIosDevice, isStandaloneDisplay, registerWebPush } from "@/lib/session
 import { isSfxOn, setSfxOn } from "@/lib/sfx";
 import { t } from "@/lib/i18n";
 import { useLocale } from "@/components/AppProviders";
-import type { AlertEvent, Announcement } from "@/lib/types";
+import type { Announcement } from "@/lib/types";
 import { useEffect, useState } from "react";
 
-export function NotificationDock({
-  alerts,
-  uid,
-}: {
-  alerts: AlertEvent[];
-  uid: string | null;
-}) {
+export function NotificationDock({ uid }: { uid: string | null }) {
   const locale = useLocale();
   const [permission, setPermission] = useState<NotificationPermission>("default");
   const [enabled, setEnabled] = useState(false);
@@ -58,8 +52,6 @@ export function NotificationDock({
     if (!result.ok) setError(result.error);
     setPending(false);
   }
-
-  const latest = alerts.slice(0, 3);
 
   return (
     <aside className="space-y-3">
@@ -106,31 +98,10 @@ export function NotificationDock({
             setSfxOn(next);
             setSfx(next);
           }}
-          className="mt-3 w-full rounded-2xl px-4 py-3 text-sm font-semibold text-foreground ring-1 ring-line hover:bg-chip"
+          className="mt-3 hidden w-full rounded-2xl px-4 py-3 text-sm font-semibold text-foreground ring-1 ring-line hover:bg-chip lg:block"
         >
           {sfxOn ? t(locale, "sfxOn") : t(locale, "sfxOff")}
         </button>
-      </div>
-
-      <div className="space-y-2">
-        {latest.length === 0 && (
-          <p className="rounded-2xl border border-dashed border-line px-4 py-6 text-center text-sm text-muted">
-            {t(locale, "noAlerts")}
-          </p>
-        )}
-        {latest.map((alert) => (
-          <article
-            key={alert.id}
-            className="rounded-2xl border border-line bg-surface px-4 py-3"
-          >
-            <p className="text-sm font-medium text-foreground">
-              {locale === "en" ? alert.messageEn : alert.messageTh}
-            </p>
-            <p className="mt-1 text-xs text-muted">
-              {locale === "en" ? alert.messageTh : alert.messageEn}
-            </p>
-          </article>
-        ))}
       </div>
     </aside>
   );
