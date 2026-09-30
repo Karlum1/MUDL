@@ -69,16 +69,20 @@ export function CycleProgress({
   const total = minutes * 60 * 1000;
   const remaining = now == null ? total : Math.max(0, endsAt - now);
   const ratio = Math.min(1, Math.max(0, 1 - remaining / total));
+  const percent = Math.round(ratio * 100);
 
   return (
     <div
-      className="h-2 overflow-hidden rounded-full bg-chip"
+      className="relative h-7 overflow-hidden rounded-full bg-chip"
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-valuenow={Math.round(ratio * 100)}
+      aria-valuenow={percent}
     >
-      <div className="h-full rounded-full bg-accent" style={{ width: `${ratio * 100}%` }} />
+      <div className="h-full rounded-full bg-accent" style={{ width: `${percent}%` }} />
+      <span className="absolute inset-0 flex items-center justify-center text-xs font-semibold tabular-nums text-foreground">
+        {percent}%
+      </span>
     </div>
   );
 }

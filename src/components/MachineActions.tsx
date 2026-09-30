@@ -85,8 +85,8 @@ export function MachineActions({
       if (action === "start") {
         setClaimCode(readClaim(machine.id)?.secret ?? null);
         setFizz(true);
-        window.setTimeout(() => setFizz(false), 1100);
-        if (typeof navigator.vibrate === "function") navigator.vibrate(60);
+        window.setTimeout(() => setFizz(false), 1800);
+        if (typeof navigator.vibrate === "function") navigator.vibrate(50);
       }
     } catch (err) {
       setError(actionErrorMessage(err));
@@ -364,25 +364,35 @@ export function MachineActions({
 }
 
 function FizzSplash() {
-  const dots = [
-    ["-30vw", "-28vh"],
-    ["18vw", "-32vh"],
-    ["-8vw", "-18vh"],
-    ["24vw", "-12vh"],
-    ["-22vw", "8vh"],
-    ["12vw", "16vh"],
-    ["32vw", "4vh"],
-    ["-36vw", "-6vh"],
-    ["4vw", "-36vh"],
-    ["-14vw", "22vh"],
+  const bubbles = [
+    { left: "6%", size: 16, delay: "0ms", dur: "1.6s" },
+    { left: "14%", size: 28, delay: "80ms", dur: "1.9s" },
+    { left: "22%", size: 12, delay: "160ms", dur: "1.5s" },
+    { left: "31%", size: 22, delay: "40ms", dur: "1.8s" },
+    { left: "40%", size: 10, delay: "220ms", dur: "1.55s" },
+    { left: "48%", size: 34, delay: "120ms", dur: "1.95s" },
+    { left: "57%", size: 14, delay: "200ms", dur: "1.65s" },
+    { left: "66%", size: 24, delay: "60ms", dur: "1.75s" },
+    { left: "74%", size: 11, delay: "260ms", dur: "1.5s" },
+    { left: "82%", size: 20, delay: "140ms", dur: "1.85s" },
+    { left: "90%", size: 15, delay: "30ms", dur: "1.7s" },
+    { left: "18%", size: 18, delay: "300ms", dur: "1.6s" },
+    { left: "52%", size: 26, delay: "180ms", dur: "1.9s" },
+    { left: "70%", size: 13, delay: "90ms", dur: "1.55s" },
   ];
   return (
-    <div className="pointer-events-none fixed inset-0 z-40" aria-hidden>
-      {dots.map(([dx, dy], index) => (
+    <div className="pointer-events-none fixed inset-0 z-40 overflow-hidden bg-background/35" aria-hidden>
+      {bubbles.map((bubble, index) => (
         <span
           key={index}
-          className="fizz-dot"
-          style={{ ["--dx" as string]: dx, ["--dy" as string]: dy, animationDelay: `${index * 30}ms` }}
+          className="launch-bubble"
+          style={{
+            left: bubble.left,
+            width: bubble.size,
+            height: bubble.size,
+            animationDelay: bubble.delay,
+            animationDuration: bubble.dur,
+          }}
         />
       ))}
     </div>
