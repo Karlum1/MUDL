@@ -97,7 +97,7 @@ export function MachineActions({
         if (typeof navigator.vibrate === "function") navigator.vibrate(50);
         window.setTimeout(() => {
           setFizz(false);
-          if (mode !== "dry") router.push("/");
+          router.push("/");
         }, 1800);
       }
     } catch (err) {
