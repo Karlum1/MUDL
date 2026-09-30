@@ -183,7 +183,7 @@ export default function AdminPage() {
   if (!unlocked) {
     return (
       <div className="flex min-h-full flex-col">
-        <SiteHeader connected={connected} />
+        <SiteHeader connected={connected} repair={false} />
         <main className="mx-auto w-full max-w-md px-4 py-16">
           <h1 className="text-3xl font-semibold text-foreground">ผู้ดูแลห้องซักผ้า</h1>
           <p className="mt-2 text-sm text-muted">
@@ -213,7 +213,7 @@ export default function AdminPage() {
 
   return (
     <div className="flex min-h-full flex-col">
-      <SiteHeader connected={connected} />
+      <SiteHeader connected={connected} repair={false} />
       <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>

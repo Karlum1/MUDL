@@ -16,7 +16,7 @@ import {
 import { t, statusLabel, type Locale } from "@/lib/i18n";
 import { STATUS_COPY } from "@/lib/status";
 import type { Machine } from "@/lib/types";
-import { CountdownTimer } from "@/components/CountdownTimer";
+import { CountdownTimer, CycleProgress } from "@/components/CountdownTimer";
 import { WashingMachineVisual } from "@/components/WashingMachineVisual";
 import { WasherDial } from "@/components/WasherDial";
 import { WatchBell } from "@/components/WatchBell";
@@ -43,6 +43,7 @@ export function MachineActions({
   const [customDry, setCustomDry] = useState(40);
   const [claimCode, setClaimCode] = useState<string | null>(null);
   const [typedCode, setTypedCode] = useState("");
+  const [fizz, setFizz] = useState(false);
   const copy = STATUS_COPY[machine.status];
   const verb = cycleCopy(machine.kind, machine.cycleMode, locale);
   const isOwner = Boolean(uid && machine.ownerUid === uid);
@@ -81,7 +82,12 @@ export function MachineActions({
       } finally {
         window.clearTimeout(timer);
       }
-      if (action === "start") setClaimCode(readClaim(machine.id)?.secret ?? null);
+      if (action === "start") {
+        setClaimCode(readClaim(machine.id)?.secret ?? null);
+        setFizz(true);
+        window.setTimeout(() => setFizz(false), 1100);
+        if (typeof navigator.vibrate === "function") navigator.vibrate(60);
+      }
     } catch (err) {
       setError(actionErrorMessage(err));
     } finally {
@@ -91,6 +97,7 @@ export function MachineActions({
 
   return (
     <div className="rounded-3xl border border-line bg-surface p-6">
+      {fizz && <FizzSplash />}
       <div className="flex flex-wrap gap-2">
         <span className={`inline-flex rounded-full px-3 py-1 text-xs ${copy.badge}`}>
           {statusLabel(copy, locale)}
@@ -140,8 +147,12 @@ export function MachineActions({
       )}
 
       {machine.status === "in_use" && (
-        <div className="mt-8 space-y-2">
+        <div className="mt-8 space-y-3">
           <CountdownTimer endsAt={machine.finishTime ?? machine.cycleEndsAt} />
+          <CycleProgress
+            endsAt={machine.finishTime ?? machine.cycleEndsAt}
+            minutes={machine.cycleMinutes}
+          />
           {(machine.finishTime ?? machine.cycleEndsAt) && (
             <p className="text-sm text-foreground">
               {etaPhrase(
@@ -152,6 +163,7 @@ export function MachineActions({
               )}
             </p>
           )}
+          {isMine && <p className="text-sm text-accent">{t(locale, "alertStandby")}</p>}
         </div>
       )}
 
@@ -347,6 +359,32 @@ export function MachineActions({
       )}
 
       {error && <p className="mt-4 text-sm text-bad">{actionErrorMessage(error)}</p>}
+    </div>
+  );
+}
+
+function FizzSplash() {
+  const dots = [
+    ["-30vw", "-28vh"],
+    ["18vw", "-32vh"],
+    ["-8vw", "-18vh"],
+    ["24vw", "-12vh"],
+    ["-22vw", "8vh"],
+    ["12vw", "16vh"],
+    ["32vw", "4vh"],
+    ["-36vw", "-6vh"],
+    ["4vw", "-36vh"],
+    ["-14vw", "22vh"],
+  ];
+  return (
+    <div className="pointer-events-none fixed inset-0 z-40" aria-hidden>
+      {dots.map(([dx, dy], index) => (
+        <span
+          key={index}
+          className="fizz-dot"
+          style={{ ["--dx" as string]: dx, ["--dy" as string]: dy, animationDelay: `${index * 30}ms` }}
+        />
+      ))}
     </div>
   );
 }

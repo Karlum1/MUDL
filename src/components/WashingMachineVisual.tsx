@@ -74,6 +74,7 @@ export function WashingMachineVisual({
           <span className="dryer-steam dryer-steam-delay-2 pointer-events-none absolute right-3 top-2 h-2.5 w-1.5 rounded-full bg-white/80" />
         </>
       )}
+      {status === "in_use" && !drying && <WashBubbles />}
       {status === "finished" && (
         <span className="washer-sparkle pointer-events-none absolute -right-1 top-1 text-lg">✨</span>
       )}
@@ -220,6 +221,17 @@ function DryerSvg() {
       <circle cx="40" cy="56" r="11" fill="none" stroke="#fb923c" strokeWidth="2" opacity="0.7" />
       <ellipse cx="40" cy="90" rx="18" ry="3" fill="rgba(15,23,42,0.28)" />
     </svg>
+  );
+}
+
+function WashBubbles() {
+  return (
+    <span className="pointer-events-none absolute inset-x-1 bottom-3 top-6" aria-hidden>
+      <span className="wash-bubble wash-bubble-1" />
+      <span className="wash-bubble wash-bubble-2" />
+      <span className="wash-bubble wash-bubble-3" />
+      <span className="wash-bubble wash-bubble-4" />
+    </span>
   );
 }
 

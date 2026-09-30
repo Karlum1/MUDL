@@ -49,3 +49,36 @@ export function CountdownTimer({
     </p>
   );
 }
+
+export function CycleProgress({
+  endsAt,
+  minutes,
+}: {
+  endsAt: number | null;
+  minutes: number | null;
+}) {
+  const [now, setNow] = useState<number | null>(null);
+
+  useEffect(() => {
+    setNow(Date.now());
+    const id = setInterval(() => setNow(Date.now()), 250);
+    return () => clearInterval(id);
+  }, []);
+
+  if (!endsAt || !minutes || minutes <= 0) return null;
+  const total = minutes * 60 * 1000;
+  const remaining = now == null ? total : Math.max(0, endsAt - now);
+  const ratio = Math.min(1, Math.max(0, 1 - remaining / total));
+
+  return (
+    <div
+      className="h-2 overflow-hidden rounded-full bg-chip"
+      role="progressbar"
+      aria-valuemin={0}
+      aria-valuemax={100}
+      aria-valuenow={Math.round(ratio * 100)}
+    >
+      <div className="h-full rounded-full bg-accent" style={{ width: `${ratio * 100}%` }} />
+    </div>
+  );
+}

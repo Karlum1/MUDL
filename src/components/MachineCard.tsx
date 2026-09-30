@@ -1,8 +1,6 @@
 "use client";
 
-import { actionErrorMessage } from "@/lib/errors";
-import { machineAction } from "@/hooks/useMachineLive";
-import { CountdownTimer } from "@/components/CountdownTimer";
+import { CountdownTimer, CycleProgress } from "@/components/CountdownTimer";
 import { WashingMachineVisual } from "@/components/WashingMachineVisual";
 import { WatchBell } from "@/components/WatchBell";
 import { useLocale } from "@/components/AppProviders";
@@ -12,7 +10,6 @@ import { t, statusLabel } from "@/lib/i18n";
 import { STATUS_COPY } from "@/lib/status";
 import type { Machine } from "@/lib/types";
 import Link from "next/link";
-import { useState } from "react";
 
 export function MachineCard({
   machine,
@@ -26,22 +23,6 @@ export function MachineCard({
   const locale = useLocale();
   const copy = STATUS_COPY[machine.status];
   const verb = cycleCopy(machine.kind, machine.cycleMode, locale);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  async function cancelMine() {
-    const ok = window.confirm(t(locale, "cancelConfirm"));
-    if (!ok) return;
-    setPending(true);
-    setError(null);
-    try {
-      await machineAction(machine.id, "cancel");
-    } catch (err) {
-      setError(actionErrorMessage(err));
-    } finally {
-      setPending(false);
-    }
-  }
 
   return (
     <article
@@ -75,6 +56,10 @@ export function MachineCard({
                 {t(locale, "usedBy")} {displayOwnerName(machine.ownerName, locale)}
               </p>
               <CountdownTimer endsAt={machine.finishTime ?? machine.cycleEndsAt} compact />
+              <CycleProgress
+                endsAt={machine.finishTime ?? machine.cycleEndsAt}
+                minutes={machine.cycleMinutes}
+              />
               {(machine.finishTime ?? machine.cycleEndsAt) && (
                 <p className="text-xs text-muted">
                   {etaPhrase(machine.kind, machine.cycleMode, machine.finishTime ?? machine.cycleEndsAt ?? 0, locale)}
@@ -95,29 +80,12 @@ export function MachineCard({
           )}
         </div>
       </div>
-      {isMine && machine.status === "in_use" ? (
-        <div className="mt-4 flex flex-wrap items-center gap-3">
-          <Link
-            href={`/machine/${machine.id}`}
-            className="text-xs text-accent hover:opacity-80"
-          >
-            {t(locale, "viewMine")}
-          </Link>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={() => void cancelMine()}
-            className="text-xs font-medium text-bad hover:opacity-80 disabled:opacity-60"
-          >
-            {t(locale, "cancelCycle")}
-          </button>
-        </div>
-      ) : isMine ? (
+      {isMine ? (
         <Link
           href={`/machine/${machine.id}`}
-          className="mt-4 inline-block text-xs text-accent hover:opacity-80"
+          className="mt-4 inline-flex rounded-2xl bg-accent px-4 py-3 text-sm font-semibold text-accent-fg hover:bg-accent-hover"
         >
-          {t(locale, "manageMine")}
+          {machine.status === "in_use" ? t(locale, "viewMine") : t(locale, "manageMine")}
         </Link>
       ) : null}
       {machine.status !== "maintenance" && (
@@ -129,7 +97,6 @@ export function MachineCard({
           />
         </div>
       )}
-      {error && <p className="mt-2 text-xs text-bad">{error}</p>}
     </article>
   );
 }

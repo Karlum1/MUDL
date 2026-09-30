@@ -8,7 +8,7 @@ import { LanguageFlip } from "@/components/LanguageFlip";
 import { useLocale } from "@/components/AppProviders";
 import { t } from "@/lib/i18n";
 
-export function SiteHeader({ connected }: { connected?: boolean }) {
+export function SiteHeader({ connected, repair = true }: { connected?: boolean; repair?: boolean }) {
   const locale = useLocale();
   return (
     <>
@@ -55,7 +55,7 @@ export function SiteHeader({ connected }: { connected?: boolean }) {
         </nav>
       </div>
     </header>
-    <RepairFab />
+    {repair && <RepairFab />}
     </>
   );
 }
