@@ -59,6 +59,8 @@ export function MachineCard({
               <CycleProgress
                 endsAt={machine.finishTime ?? machine.cycleEndsAt}
                 minutes={machine.cycleMinutes}
+                mode={machine.cycleMode}
+                compact
               />
               {(machine.finishTime ?? machine.cycleEndsAt) && (
                 <p className="text-xs text-muted">

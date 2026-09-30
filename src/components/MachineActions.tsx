@@ -152,6 +152,7 @@ export function MachineActions({
           <CycleProgress
             endsAt={machine.finishTime ?? machine.cycleEndsAt}
             minutes={machine.cycleMinutes}
+            mode={machine.cycleMode}
           />
           {(machine.finishTime ?? machine.cycleEndsAt) && (
             <p className="text-sm text-foreground">

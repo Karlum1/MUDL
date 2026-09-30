@@ -218,10 +218,53 @@ body {
   animation: bubble-float-up 1.8s ease-in forwards;
 }
 
+.drum-swirl {
+  transform-box: view-box;
+  transform-origin: 40px 40px;
+  animation: washer-drum-spin 1.25s linear infinite;
+}
+
+.drum-wave {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: drum-slosh 1.35s ease-in-out infinite;
+}
+
+@keyframes drum-slosh {
+  0%,
+  100% {
+    transform: translateX(-5px);
+  }
+  50% {
+    transform: translateX(5px);
+  }
+}
+
+.drum-bubble {
+  animation: drum-bubble-up 1.5s ease-in infinite;
+}
+
+@keyframes drum-bubble-up {
+  0% {
+    transform: translateY(4px);
+    opacity: 0.15;
+  }
+  25% {
+    opacity: 0.95;
+  }
+  100% {
+    transform: translateY(-16px);
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .bell-wiggle,
   .wash-bubble,
-  .launch-bubble {
+  .launch-bubble,
+  .drum-swirl,
+  .drum-wave,
+  .drum-bubble {
     animation: none;
   }
 }
