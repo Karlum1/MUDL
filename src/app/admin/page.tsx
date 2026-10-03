@@ -9,8 +9,8 @@ import {
   subscribeAnnouncements,
   subscribeMaintenanceLogs,
 } from "@/lib/machines";
-import { subscribeUsageMonth } from "@/lib/dailyStats";
-import { DORMS, SEED_MACHINES, dormById } from "@/lib/dorms";
+import { dormLabel, subscribeUsageHits, type UsageHit } from "@/lib/dailyStats";
+import { DORMS, SEED_MACHINES, dormById, dormSortIndex } from "@/lib/dorms";
 import { bangkokMonthLabel, bangkokDateKey, bangkokDateLabel, bangkokClockLabel } from "@/lib/day";
 import { STATUS_COPY } from "@/lib/status";
 import { repairCategoryLabel } from "@/lib/repairCategories";
@@ -19,6 +19,15 @@ import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 const PIN_KEY = "wm-admin-pin-v1";
 const VIEW_KEY = "wm-admin-view-v1";
+
+const DORM_BAR: Record<string, string> = {
+  int: "bg-cyan-300",
+  sri: "bg-emerald-300",
+  lee: "bg-amber-300",
+  chai: "bg-violet-300",
+  kan: "bg-rose-300",
+  other: "bg-slate-300",
+};
 
 type AdminView = {
   sections: { qr: boolean; machines: boolean; announce: boolean; graphs: boolean; logs: boolean };
@@ -79,8 +88,8 @@ export default function AdminPage() {
   const [note, setNote] = useState("");
   const [messageTh, setMessageTh] = useState("");
   const [pushToo, setPushToo] = useState(true);
-  const [monthCount, setMonthCount] = useState(0);
-  const [monthDays, setMonthDays] = useState<number[]>([]);
+  const [hits, setHits] = useState<UsageHit[]>([]);
+  const [graphDorm, setGraphDorm] = useState("all");
   const [hoverDay, setHoverDay] = useState<number | null>(null);
   const [logs, setLogs] = useState<MaintenanceLog[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
@@ -111,10 +120,7 @@ export default function AdminPage() {
 
   useEffect(() => {
     if (!unlocked) return;
-    const unsubMonth = subscribeUsageMonth((summary) => {
-      setMonthCount(summary.total);
-      setMonthDays(summary.byDay);
-    }, () => undefined);
+    const unsubMonth = subscribeUsageHits(setHits, () => undefined);
     const unsubLogs = subscribeMaintenanceLogs(setLogs, () => undefined);
     const unsubNews = subscribeAnnouncements(setAnnouncements, () => undefined);
     return () => {
@@ -124,12 +130,40 @@ export default function AdminPage() {
     };
   }, [unlocked]);
 
-  const monthPeak = useMemo(() => {
-    const max = Math.max(1, ...monthDays);
-    const avg = monthDays.length ? monthCount / monthDays.length : 0;
-    const chartPx = Math.round(Math.min(280, Math.max(148, 100 + avg * 10)));
-    return { max, avg, chartPx };
-  }, [monthDays, monthCount]);
+  const usage = useMemo(() => {
+    const month = bangkokDateKey().slice(0, 7);
+    const days = new Date(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0).getDate();
+    const scoped = hits.filter((hit) => graphDorm === "all" || hit.dormId === graphDorm);
+    const dormIds = [...new Set(scoped.map((hit) => hit.dormId))].sort(
+      (a, b) => dormSortIndex(a) - dormSortIndex(b),
+    );
+    const byDay = Array.from({ length: days }, () => [] as { dormId: string; count: number }[]);
+    for (let day = 0; day < days; day += 1) {
+      const counts = new Map<string, number>();
+      for (const hit of scoped) {
+        if (hit.day !== day + 1) continue;
+        counts.set(hit.dormId, (counts.get(hit.dormId) ?? 0) + 1);
+      }
+      byDay[day] = dormIds
+        .map((dormId) => ({ dormId, count: counts.get(dormId) ?? 0 }))
+        .filter((item) => item.count > 0);
+    }
+    const totals = byDay.map((parts) => parts.reduce((sum, part) => sum + part.count, 0));
+    const total = totals.reduce((sum, count) => sum + count, 0);
+    const max = Math.max(1, ...totals);
+    const avg = totals.length ? total / totals.length : 0;
+    const peopleSource =
+      hoverDay === null ? scoped : scoped.filter((hit) => hit.day === hoverDay + 1);
+    const peopleMap = new Map<string, { dormId: string; name: string; count: number }>();
+    for (const hit of peopleSource) {
+      const key = `${hit.dormId}\n${hit.ownerName}`;
+      const current = peopleMap.get(key);
+      if (current) current.count += 1;
+      else peopleMap.set(key, { dormId: hit.dormId, name: hit.ownerName, count: 1 });
+    }
+    const people = [...peopleMap.values()].sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "th"));
+    return { byDay, totals, total, max, avg, dormIds, people };
+  }, [hits, graphDorm, hoverDay]);
 
   const repairLogs = useMemo(() => {
     return logs.filter((log) => {
@@ -261,31 +295,64 @@ export default function AdminPage() {
         <section className="rounded-3xl border border-line bg-surface p-5">
           <h2 className="font-semibold text-foreground">การใช้รายวันเดือนนี้</h2>
           <p className="mt-1 text-sm text-muted">
-            เดือน {bangkokMonthLabel(bangkokDateKey().slice(0, 7))} มีผู้ใช้ {monthCount} รอบ
-            {monthPeak.avg > 0 ? ` · เฉลี่ย ${monthPeak.avg.toFixed(1)} รอบ/วัน` : ""}
+            เดือน {bangkokMonthLabel(bangkokDateKey().slice(0, 7))}
+            {graphDorm === "all" ? "" : ` · ${dormLabel(graphDorm)}`} มีผู้ใช้ {usage.total} รอบ
+            {usage.avg > 0 ? ` · เฉลี่ย ${usage.avg.toFixed(1)} รอบ/วัน` : ""}
           </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setGraphDorm("all")}
+              className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
+                graphDorm === "all" ? "bg-accent text-accent-fg" : "bg-chip text-muted ring-1 ring-line"
+              }`}
+            >
+              ทุกหอ
+            </button>
+            {DORMS.map((dorm) => (
+              <button
+                key={dorm.id}
+                type="button"
+                onClick={() => setGraphDorm(dorm.id)}
+                className={`rounded-full px-3 py-1.5 text-sm font-semibold ${
+                  graphDorm === dorm.id ? "bg-accent text-accent-fg" : "bg-chip text-muted ring-1 ring-line"
+                }`}
+              >
+                {dorm.name}
+              </button>
+            ))}
+          </div>
           <div className="relative mt-4" onMouseLeave={() => setHoverDay(null)}>
-            <div className="relative flex items-end gap-0.5" style={{ height: monthPeak.chartPx }}>
-              {monthPeak.avg > 0 && (
+            <div className="relative flex items-end gap-0.5" style={{ height: 180 }}>
+              {usage.avg > 0 && (
                 <div
                   className="pointer-events-none absolute right-0 left-0 z-10 border-t border-dashed border-amber-200/70"
-                  style={{ bottom: `${(monthPeak.avg / monthPeak.max) * 100}%` }}
+                  style={{ bottom: `${(usage.avg / usage.max) * 100}%` }}
                 />
               )}
-              {monthDays.map((count, index) => (
-                <div key={index} className="flex h-full min-w-0 flex-1 items-end">
-                  <div
-                    className={`w-full rounded-t ${
-                      hoverDay === index ? "bg-emerald-200" : "bg-emerald-400/80"
-                    }`}
-                    style={{ height: `${(count / monthPeak.max) * 100}%`, minHeight: count ? 3 : 0 }}
-                    onMouseEnter={() => setHoverDay(index)}
-                  />
+              {usage.byDay.map((parts, index) => (
+                <div
+                  key={index}
+                  className="flex h-full min-w-0 flex-1 flex-col justify-end"
+                  onMouseEnter={() => setHoverDay(index)}
+                >
+                  {parts.map((part) => (
+                    <div
+                      key={part.dormId}
+                      className={`w-full ${DORM_BAR[part.dormId] ?? DORM_BAR.other} ${
+                        hoverDay === index ? "opacity-100" : "opacity-80"
+                      }`}
+                      style={{
+                        height: `${(part.count / usage.max) * 100}%`,
+                        minHeight: 3,
+                      }}
+                    />
+                  ))}
                 </div>
               ))}
             </div>
             <div className="mt-1 flex gap-0.5">
-              {monthDays.map((_, index) => (
+              {usage.byDay.map((_, index) => (
                 <p
                   key={index}
                   className={`min-w-0 flex-1 text-center text-[8px] leading-none ${
@@ -297,11 +364,44 @@ export default function AdminPage() {
               ))}
             </div>
           </div>
+          {graphDorm === "all" && usage.dormIds.length > 0 && (
+            <div className="mt-3 flex flex-wrap gap-3 text-xs text-muted">
+              {usage.dormIds.map((dormId) => (
+                <span key={dormId} className="inline-flex items-center gap-1.5">
+                  <span className={`h-2.5 w-2.5 rounded-sm ${DORM_BAR[dormId] ?? DORM_BAR.other}`} />
+                  {dormLabel(dormId)}
+                </span>
+              ))}
+            </div>
+          )}
           <p className="mt-2 text-sm text-accent">
             {hoverDay === null
-              ? "ชี้แท่งกราฟเพื่อดูจำนวนรอบในวันนั้น"
-              : `วันที่ ${hoverDay + 1} · ${monthDays[hoverDay]} รอบ`}
+              ? "ชี้แท่งกราฟเพื่อดูว่าวันนั้นหอไหนใครใช้กี่รอบ"
+              : `วันที่ ${hoverDay + 1} · ${usage.totals[hoverDay] ?? 0} รอบ`}
           </p>
+          <div className="mt-3">
+            <h3 className="text-sm font-semibold text-foreground">
+              {hoverDay === null ? "คนที่ใช้ทั้งเดือน" : `คนที่ใช้วันที่ ${hoverDay + 1}`}
+            </h3>
+            {usage.people.length === 0 ? (
+              <p className="mt-2 text-sm text-muted">ยังไม่มีรายการในช่วงนี้</p>
+            ) : (
+              <ul className="mt-2 grid gap-2 sm:grid-cols-2">
+                {usage.people.slice(0, 40).map((person) => (
+                  <li
+                    key={`${person.dormId}-${person.name}`}
+                    className="flex items-center justify-between gap-3 rounded-2xl bg-chip px-3 py-2 text-sm"
+                  >
+                    <span className="min-w-0">
+                      <span className="block truncate font-semibold text-foreground">{person.name}</span>
+                      <span className="block truncate text-xs text-muted">{dormLabel(person.dormId)}</span>
+                    </span>
+                    <span className="shrink-0 font-semibold text-accent">{person.count} รอบ</span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         </section>
         )}
 

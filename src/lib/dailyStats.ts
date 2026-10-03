@@ -1,11 +1,14 @@
-import { bangkokDateKey, bangkokDaysInMonth, bangkokHour } from "@/lib/day";
-import { DAILY_STATS_COLLECTION, getFirebaseDb } from "@/lib/firebase";
+import { bangkokDateKey, bangkokDaysInMonth, bangkokHour, bangkokMonthKey } from "@/lib/day";
+import { dormById, seedForId, type DormId } from "@/lib/dorms";
+import { DAILY_STATS_COLLECTION, USAGE_EVENTS_COLLECTION, getFirebaseDb } from "@/lib/firebase";
 import {
+  Timestamp,
   collection,
   doc,
   documentId,
   increment,
   onSnapshot,
+  orderBy,
   query,
   serverTimestamp,
   setDoc,
@@ -67,6 +70,85 @@ export function subscribeUsageHours(
     },
     (error) => onError?.(error),
   );
+}
+
+export type UsageHit = {
+  id: string;
+  day: number;
+  dormId: string;
+  ownerName: string;
+};
+
+const DORM_IDS = new Set(["sri", "lee", "int", "chai", "kan"]);
+
+function monthBounds(monthKey: string) {
+  const [year, month] = monthKey.split("-").map(Number);
+  const start = new Date(`${monthKey}-01T00:00:00+07:00`);
+  const next =
+    month === 12
+      ? `${year + 1}-01-01T00:00:00+07:00`
+      : `${year}-${String(month + 1).padStart(2, "0")}-01T00:00:00+07:00`;
+  return { start, end: new Date(next) };
+}
+
+function dormFromEvent(data: Record<string, unknown>) {
+  const stored = typeof data.dormId === "string" ? data.dormId : "";
+  if (DORM_IDS.has(stored)) return stored;
+  const machineId = typeof data.machineId === "string" ? data.machineId : "";
+  const seed = seedForId(machineId);
+  if (seed) return seed.dormId;
+  const prefix = machineId.split("-")[0] ?? "";
+  return DORM_IDS.has(prefix) ? prefix : "other";
+}
+
+export function subscribeUsageHits(
+  onNext: (hits: UsageHit[]) => void,
+  onError?: (error: Error) => void,
+): Unsubscribe {
+  const db = getFirebaseDb();
+  const month = bangkokMonthKey();
+  const { start, end } = monthBounds(month);
+  const days = bangkokDaysInMonth(month);
+  const usageQuery = query(
+    collection(db, USAGE_EVENTS_COLLECTION),
+    where("createdAt", ">=", Timestamp.fromDate(start)),
+    where("createdAt", "<", Timestamp.fromDate(end)),
+    orderBy("createdAt", "asc"),
+  );
+  return onSnapshot(
+    usageQuery,
+    (snapshot) => {
+      const hits: UsageHit[] = [];
+      for (const item of snapshot.docs) {
+        const data = item.data() as Record<string, unknown>;
+        const created = data.createdAt;
+        const at =
+          created instanceof Timestamp
+            ? created.toMillis()
+            : typeof created === "number"
+              ? created
+              : 0;
+        if (!at) continue;
+        const day = Number(bangkokDateKey(new Date(at)).slice(8, 10));
+        if (day < 1 || day > days) continue;
+        const rawName = typeof data.ownerName === "string" ? data.ownerName.trim() : "";
+        hits.push({
+          id: item.id,
+          day,
+          dormId: dormFromEvent(data),
+          ownerName: rawName || "ไม่ระบุตัวตน",
+        });
+      }
+      onNext(hits);
+    },
+    (error) => onError?.(error),
+  );
+}
+
+export function dormLabel(dormId: string) {
+  if (dormId === "other") return "ไม่ระบุหอ";
+  const dorm = dormById(dormId as DormId);
+  return dorm ? `${dorm.name} (${dorm.halls})` : dormId;
 }
 
 export function subscribeUsageMonth(

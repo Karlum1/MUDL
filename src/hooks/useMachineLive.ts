@@ -152,7 +152,11 @@ export function MachineLiveProvider({ children }: { children: ReactNode }) {
               const previous = prevRef.current;
               for (const machine of machines) {
                 const before = previous.get(machine.id);
-                if (before?.status === "in_use" && machine.status === "finished") {
+                if (
+                  before?.status === "in_use" &&
+                  machine.status === "finished" &&
+                  machine.ownerUid === uid
+                ) {
                   const key = `${machine.id}-finished-${machine.finishTime}`;
                   if (!alerted.current.has(key)) {
                     alerted.current.add(key);

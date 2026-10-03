@@ -391,10 +391,12 @@ export async function startMachine(
     startedAt: Date.now(),
   });
   saveClaim({ machineId: id, secret: claimSecret, phone, startedAt: Date.now() });
+  const seed = seedForId(id);
   void addDoc(collection(db, USAGE_EVENTS_COLLECTION), {
     phone: phone || null,
     machineId: id,
-    machineLabel: seedForId(id)?.label ?? id,
+    machineLabel: seed?.label ?? id,
+    dormId: seed?.dormId ?? null,
     ownerName: name,
     createdAt: Timestamp.now(),
   }).catch(() => undefined);

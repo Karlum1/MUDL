@@ -55,30 +55,32 @@ export function WashingMachineVisual({
   const showDryerShape = resolved === "dryer" || (resolved === "combo" && drying);
 
   return (
-    <div className={`relative overflow-visible ${dim} look-${resolved} ${motion}`} aria-hidden>
-      {showDryerShape ? (
-        <DryerSvg />
-      ) : resolved === "black" ? (
-        <BlackWasherSvg clipId={clipId} />
-      ) : resolved === "combo" ? (
-        <ComboWasherSvg clipId={clipId} />
-      ) : resolved === "grey" ? (
-        <GreyWasherSvg clipId={clipId} />
-      ) : (
-        <WhiteWasherSvg clipId={clipId} />
-      )}
-      {status === "in_use" && drying && (
-        <>
-          <span className="dryer-steam pointer-events-none absolute left-3 top-1 h-3 w-2 rounded-full bg-orange-200/80" />
-          <span className="dryer-steam dryer-steam-delay pointer-events-none absolute left-1/2 top-0 h-4 w-2 rounded-full bg-orange-100/90" />
-          <span className="dryer-steam dryer-steam-delay-2 pointer-events-none absolute right-3 top-2 h-2.5 w-1.5 rounded-full bg-white/80" />
-        </>
-      )}
+    <div className={`machine-illustration relative overflow-visible ${dim}`} aria-hidden>
+      <div className={`relative h-full w-full look-${resolved} ${motion}`}>
+        {showDryerShape ? (
+          <DryerSvg />
+        ) : resolved === "black" ? (
+          <BlackWasherSvg clipId={clipId} />
+        ) : resolved === "combo" ? (
+          <ComboWasherSvg clipId={clipId} />
+        ) : resolved === "grey" ? (
+          <GreyWasherSvg clipId={clipId} />
+        ) : (
+          <WhiteWasherSvg clipId={clipId} />
+        )}
+        {status === "in_use" && drying && (
+          <>
+            <span className="dryer-steam pointer-events-none absolute left-3 top-1 h-3 w-2 rounded-full bg-orange-200/80" />
+            <span className="dryer-steam dryer-steam-delay pointer-events-none absolute left-1/2 top-0 h-4 w-2 rounded-full bg-orange-100/90" />
+            <span className="dryer-steam dryer-steam-delay-2 pointer-events-none absolute right-3 top-2 h-2.5 w-1.5 rounded-full bg-white/80" />
+          </>
+        )}
+        {status === "finished" && (
+          <span className="washer-sparkle pointer-events-none absolute -right-1 top-1 text-lg">✨</span>
+        )}
+        {status === "maintenance" && <BrokeParts />}
+      </div>
       {status === "in_use" && !drying && <WashBubbles />}
-      {status === "finished" && (
-        <span className="washer-sparkle pointer-events-none absolute -right-1 top-1 text-lg">✨</span>
-      )}
-      {status === "maintenance" && <BrokeParts />}
     </div>
   );
 }
@@ -117,7 +119,7 @@ function Drum({ clipId, cx = 40, cy = 56, tint = "#0e7490" }: { clipId: string; 
 
 function WhiteWasherSvg({ clipId }: { clipId: string }) {
   return (
-    <svg viewBox="0 0 80 96" className="h-full w-full drop-shadow-lg">
+    <svg viewBox="0 0 80 96" className="h-full w-full">
       <defs>
         <clipPath id={clipId}>
           <circle cx="40" cy="56" r="16" />
@@ -128,7 +130,7 @@ function WhiteWasherSvg({ clipId }: { clipId: string }) {
       <CuteEyes y={20} fill="#38bdf8" />
       <rect x="50" y="16" width="10" height="8" rx="3" fill="#cbd5e1" />
       <circle cx="40" cy="56" r="22" fill="#e2e8f0" />
-      <circle cx="40" cy="56" r="18" fill="#bae6fd" className="washer-glass" />
+      <circle cx="40" cy="56" r="18" fill="#38bdf8" className="washer-glass" />
       <Drum clipId={clipId} />
       <circle cx="40" cy="56" r="18" fill="none" stroke="#94a3b8" strokeWidth="2" />
       <ellipse cx="40" cy="90" rx="18" ry="3" fill="rgba(15,23,42,0.28)" />
@@ -138,7 +140,7 @@ function WhiteWasherSvg({ clipId }: { clipId: string }) {
 
 function ComboWasherSvg({ clipId }: { clipId: string }) {
   return (
-    <svg viewBox="0 0 80 96" className="h-full w-full drop-shadow-lg">
+    <svg viewBox="0 0 80 96" className="h-full w-full">
       <defs>
         <clipPath id={clipId}>
           <circle cx="40" cy="58" r="16" />
@@ -163,7 +165,7 @@ function ComboWasherSvg({ clipId }: { clipId: string }) {
 
 function BlackWasherSvg({ clipId }: { clipId: string }) {
   return (
-    <svg viewBox="0 0 80 96" className="h-full w-full drop-shadow-lg">
+    <svg viewBox="0 0 80 96" className="h-full w-full">
       <defs>
         <clipPath id={clipId}>
           <circle cx="40" cy="56" r="16" />
@@ -174,7 +176,7 @@ function BlackWasherSvg({ clipId }: { clipId: string }) {
       <CuteEyes y={21} fill="#22d3ee" />
       <rect x="50" y="17" width="10" height="8" rx="2" fill="#334155" />
       <circle cx="40" cy="56" r="22" fill="#020617" />
-      <circle cx="40" cy="56" r="18" fill="#164e63" className="washer-glass" />
+      <circle cx="40" cy="56" r="18" fill="#22d3ee" className="washer-glass" />
       <Drum clipId={clipId} tint="#155e75" />
       <circle cx="40" cy="56" r="18" fill="none" stroke="#64748b" strokeWidth="2" />
       <ellipse cx="40" cy="90" rx="18" ry="3" fill="rgba(15,23,42,0.45)" />
@@ -184,7 +186,7 @@ function BlackWasherSvg({ clipId }: { clipId: string }) {
 
 function GreyWasherSvg({ clipId }: { clipId: string }) {
   return (
-    <svg viewBox="0 0 72 110" className="h-full w-full drop-shadow-lg">
+    <svg viewBox="0 0 72 110" className="h-full w-full">
       <defs>
         <clipPath id={clipId}>
           <ellipse cx="36" cy="62" rx="18" ry="10" />
@@ -211,7 +213,7 @@ function GreyWasherSvg({ clipId }: { clipId: string }) {
 
 function DryerSvg() {
   return (
-    <svg viewBox="0 0 80 96" className="h-full w-full drop-shadow-lg">
+    <svg viewBox="0 0 80 96" className="h-full w-full">
       <rect x="8" y="6" width="64" height="82" rx="14" className="dryer-body" fill="#f8fafc" />
       <rect x="14" y="14" width="52" height="14" rx="6" fill="#e2e8f0" />
       <CuteEyes y={21} fill="#fb923c" />
