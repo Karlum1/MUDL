@@ -24,6 +24,7 @@ const notoThai = Noto_Sans_Thai({
 
 export const viewport: Viewport = {
   themeColor: "#07111c",
+  colorScheme: "dark light",
 };
 
 export const metadata: Metadata = {

@@ -164,8 +164,10 @@ body {
 }
 
 .machine-illustration,
-.machine-illustration svg {
-  color-scheme: only light;
+.machine-illustration svg,
+.machine-illustration svg * {
+  color-scheme: normal;
+  forced-color-adjust: none;
 }
 
 .wash-bubble {
