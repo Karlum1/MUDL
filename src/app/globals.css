@@ -444,10 +444,6 @@ body {
   fill: #f97316;
 }
 
-.dryer-hot {
-  box-shadow: 0 0 12px rgba(249, 115, 22, 0.55);
-}
-
 .dryer-steam {
   animation: dryer-steam 1.3s ease-out infinite;
 }
