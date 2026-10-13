@@ -80,7 +80,13 @@ export async function runLaundryTick() {
     const finishMs = data.finishTime?.toMillis?.() as number | undefined;
     const almostMs = data.almostAt?.toMillis?.() as number | undefined;
 
-    if (data.status === "in_use" && finishMs && finishMs + FINISHED_STALE_MS <= now) {
+    if (
+      (data.status === "in_use" || data.status === "finished") &&
+      finishMs &&
+      finishMs + FINISHED_STALE_MS <= now
+    ) {
+      const ownerUid = typeof data.ownerUid === "string" ? data.ownerUid : "";
+      const label = String(data.label ?? machine.id);
       await machine.ref.update(FREE_MACHINE);
       await logAdmin(
         machine.id,
@@ -88,17 +94,14 @@ export async function runLaundryTick() {
         `ปล่อยเครื่องว่างอัตโนมัติ หลังผ้าค้างเกิน ${FINISHED_STALE_MINUTES} นาที`,
       );
       freeIds.add(machine.id);
-      continue;
-    }
-
-    if (data.status === "finished" && finishMs && finishMs + FINISHED_STALE_MS <= now) {
-      await machine.ref.update(FREE_MACHINE);
-      await logAdmin(
-        machine.id,
-        "auto_release",
-        `ปล่อยเครื่องว่างอัตโนมัติ หลังผ้าค้างเกิน ${FINISHED_STALE_MINUTES} นาที`,
-      );
-      freeIds.add(machine.id);
+      if (ownerUid) {
+        await sendPushToUid(
+          ownerUid,
+          "ระบบนำผ้าออกแล้ว",
+          `${label} ระบบได้นำผ้าของคุณออกอัตโนมัติแล้ว`,
+          `${machine.id}-auto-collect`,
+        );
+      }
       continue;
     }
 

@@ -44,7 +44,6 @@ import type {
 
 export const DEMO_SECONDS = 20;
 export const MAX_OWNER_NAME = 24;
-export const MAX_OWNER_PHONE = 12;
 export const ANON_OWNER_NAME = "ไม่ระบุตัวตน";
 
 function millisFromTimestamp(value: unknown): number | null {
@@ -295,11 +294,6 @@ export function normalizeOwnerName(value: string) {
   return value.trim().slice(0, MAX_OWNER_NAME) || ANON_OWNER_NAME;
 }
 
-export function normalizeOwnerPhone(value: string) {
-  const digits = value.replace(/[^\d+]/g, "").slice(0, MAX_OWNER_PHONE);
-  return digits;
-}
-
 export function displayOwnerName(
   name: string | null | undefined,
   locale: "th" | "en" = "th",
@@ -326,11 +320,9 @@ export async function startMachine(
   id: string,
   minutes: number | "demo" = 30,
   ownerName: string,
-  ownerPhone = "",
   cycleMode?: CycleMode,
 ) {
   const name = normalizeOwnerName(ownerName);
-  const phone = normalizeOwnerPhone(ownerPhone);
   const claimSecret = createClaimSecret();
   const claimHash = await hashClaimSecret(claimSecret);
   const user = await ensureAnonymousUser();
@@ -371,7 +363,7 @@ export async function startMachine(
         finishAlertSent: false,
         ownerUid: user.uid,
         ownerName: name,
-        ownerPhone: phone || null,
+        ownerPhone: null,
         reservedUntil: null,
         ticketNumber: null,
         claimHash,
@@ -390,10 +382,9 @@ export async function startMachine(
     finishTime: result.finishTime,
     startedAt: Date.now(),
   });
-  saveClaim({ machineId: id, secret: claimSecret, phone, startedAt: Date.now() });
+  saveClaim({ machineId: id, secret: claimSecret, phone: "", startedAt: Date.now() });
   const seed = seedForId(id);
   void addDoc(collection(db, USAGE_EVENTS_COLLECTION), {
-    phone: phone || null,
     machineId: id,
     machineLabel: seed?.label ?? id,
     dormId: seed?.dormId ?? null,
@@ -451,7 +442,20 @@ const FREE_MACHINE = {
 };
 
 export async function collectClothes(id: string) {
-  await releaseMachine(id, "finished", "NOT_FINISHED");
+  const user = await ensureAnonymousUser();
+  const idToken = await user.getIdToken();
+  const response = await fetch("/api/machines/collect", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${idToken}`,
+    },
+    body: JSON.stringify({ machineId: id }),
+  });
+  const data = (await response.json().catch(() => null)) as { error?: string } | null;
+  if (!response.ok) throw new Error(data?.error || "RELEASE_FAILED");
+  writeMyCycle(null);
+  forgetClaim(id);
 }
 
 export async function cancelCycle(id: string) {
