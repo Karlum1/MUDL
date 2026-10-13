@@ -44,6 +44,7 @@ import type {
 
 export const DEMO_SECONDS = 20;
 export const MAX_OWNER_NAME = 24;
+export const MAX_OWNER_PHONE = 12;
 export const ANON_OWNER_NAME = "ไม่ระบุตัวตน";
 
 function millisFromTimestamp(value: unknown): number | null {
@@ -294,6 +295,11 @@ export function normalizeOwnerName(value: string) {
   return value.trim().slice(0, MAX_OWNER_NAME) || ANON_OWNER_NAME;
 }
 
+export function normalizeOwnerPhone(value: string) {
+  const digits = value.replace(/[^\d+]/g, "").slice(0, MAX_OWNER_PHONE);
+  return digits;
+}
+
 export function displayOwnerName(
   name: string | null | undefined,
   locale: "th" | "en" = "th",
@@ -320,9 +326,11 @@ export async function startMachine(
   id: string,
   minutes: number | "demo" = 30,
   ownerName: string,
+  ownerPhone = "",
   cycleMode?: CycleMode,
 ) {
   const name = normalizeOwnerName(ownerName);
+  const phone = normalizeOwnerPhone(ownerPhone);
   const claimSecret = createClaimSecret();
   const claimHash = await hashClaimSecret(claimSecret);
   const user = await ensureAnonymousUser();
@@ -363,7 +371,7 @@ export async function startMachine(
         finishAlertSent: false,
         ownerUid: user.uid,
         ownerName: name,
-        ownerPhone: null,
+        ownerPhone: phone || null,
         reservedUntil: null,
         ticketNumber: null,
         claimHash,
@@ -382,9 +390,10 @@ export async function startMachine(
     finishTime: result.finishTime,
     startedAt: Date.now(),
   });
-  saveClaim({ machineId: id, secret: claimSecret, phone: "", startedAt: Date.now() });
+  saveClaim({ machineId: id, secret: claimSecret, phone, startedAt: Date.now() });
   const seed = seedForId(id);
   void addDoc(collection(db, USAGE_EVENTS_COLLECTION), {
+    phone: phone || null,
     machineId: id,
     machineLabel: seed?.label ?? id,
     dormId: seed?.dormId ?? null,

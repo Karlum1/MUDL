@@ -308,10 +308,11 @@ export async function machineAction(
   action: "start" | "collect" | "cancel",
   minutes?: number | "demo",
   ownerName?: string,
+  ownerPhone?: string,
   cycleMode?: "wash" | "dry",
 ) {
   if (action === "start") {
-    const started = await startMachine(id, minutes ?? 30, ownerName ?? "", cycleMode);
+    const started = await startMachine(id, minutes ?? 30, ownerName ?? "", ownerPhone ?? "", cycleMode);
     void registerAndScheduleFinish(id);
     return { claimSecret: started.claimSecret };
   }

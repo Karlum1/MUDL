@@ -71,7 +71,8 @@ export function MachineCard({
           )}
           {machine.status === "finished" && (
             <p className="text-sm leading-6 text-warn">
-              {displayOwnerName(machine.ownerName, locale)} {verb.done} — {t(locale, "pleaseCollect")}
+              {displayOwnerName(machine.ownerName, locale)} {verb.done}
+              {machine.ownerPhone ? ` · ${t(locale, "call")} ${machine.ownerPhone}` : ""} — {t(locale, "pleaseCollect")}
             </p>
           )}
           {machine.status === "maintenance" && (

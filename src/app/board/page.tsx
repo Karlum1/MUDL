@@ -137,6 +137,7 @@ export default function BoardPage() {
                             {machine.status === "finished" && (
                               <p className="mt-1 text-sm text-accent">
                                 {displayOwnerName(machine.ownerName, locale)}
+                                {machine.ownerPhone ? ` · ${machine.ownerPhone}` : ""}
                               </p>
                             )}
                           </div>

@@ -3,7 +3,7 @@
 import { actionErrorMessage } from "@/lib/errors";
 import { machineAction, machineActionWithCode } from "@/hooks/useMachineLive";
 import { readClaim } from "@/lib/claimCode";
-import { MAX_OWNER_NAME, displayOwnerName } from "@/lib/machines";
+import { MAX_OWNER_NAME, MAX_OWNER_PHONE, displayOwnerName } from "@/lib/machines";
 import {
   DRY_MINUTES,
   WASH_MINUTES,
@@ -41,6 +41,7 @@ export function MachineActions({
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
   const [ownerName, setOwnerName] = useState("");
+  const [ownerPhone, setOwnerPhone] = useState("");
   const [customWash, setCustomWash] = useState(30);
   const [customDry, setCustomDry] = useState(40);
   const [claimCode, setClaimCode] = useState<string | null>(null);
@@ -77,7 +78,7 @@ export function MachineActions({
       const useCode = Boolean(claimCode) && !isOwner && action !== "start";
       const work = useCode
         ? machineActionWithCode(machine.id, action, claimCode ?? "")
-        : machineAction(machine.id, action, minutes, ownerName, mode);
+        : machineAction(machine.id, action, minutes, ownerName, ownerPhone, mode);
       let timer = 0;
       try {
         await Promise.race([
@@ -148,6 +149,7 @@ export function MachineActions({
       {machine.status === "finished" && (
         <p className="mt-2 text-sm text-accent">
           {t(locale, "usingNow")} {displayOwnerName(machine.ownerName, locale)}
+          {machine.ownerPhone ? ` · ${t(locale, "call")} ${machine.ownerPhone}` : ""}
           {machine.cycleMode === "dry"
             ? ` · ${t(locale, "dry")}`
             : machine.cycleMode === "wash"
@@ -207,6 +209,20 @@ export function MachineActions({
           </label>
           <p className="text-xs leading-5 text-muted">
             {t(locale, "ownerNameHint")}
+          </p>
+          <label className="block text-sm text-foreground">
+            {t(locale, "phone")}
+            <input
+              value={ownerPhone}
+              onChange={(event) => setOwnerPhone(event.target.value)}
+              maxLength={MAX_OWNER_PHONE}
+              inputMode="tel"
+              placeholder="0812345678"
+              className="mt-2 w-full rounded-2xl border border-line bg-field px-4 py-3 text-foreground outline-none ring-accent/40 placeholder:text-muted focus:ring-2"
+            />
+          </label>
+          <p className="text-xs leading-5 text-muted">
+            {t(locale, "phoneHint")}
           </p>
 
           {machine.kind === "combo" ? (
@@ -309,7 +325,8 @@ export function MachineActions({
       {machine.status === "finished" && !isMine && (
         <div className="mt-8">
           <p className="text-sm text-warn">
-            {t(locale, "waitingFor")} {displayOwnerName(machine.ownerName, locale)} {verb.collect} {t(locale, "waitCollect")}
+            {t(locale, "waitingFor")} {displayOwnerName(machine.ownerName, locale)} {verb.collect}
+            {machine.ownerPhone ? ` · ${t(locale, "call")} ${machine.ownerPhone}` : ""} {t(locale, "waitCollect")}
           </p>
           <form
             className="mt-4 grid gap-2"
