@@ -21,6 +21,14 @@ const FREE_MACHINE = {
   claimHash: null,
 };
 
+async function safePush(uid: string, title: string, body: string, tag: string) {
+  try {
+    await sendPushToUid(uid, title, body, tag);
+  } catch (error) {
+    console.error("push failed", tag, error);
+  }
+}
+
 async function logAdmin(machineId: string, action: string, note: string) {
   const db = getAdminDb();
   await db.collection("maintenanceLogs").add({
@@ -65,17 +73,19 @@ export async function runLaundryTick() {
 
   const db = getAdminDb();
   const now = Date.now();
-  const machinesSnap = await db
-    .collection("machines")
-    .where("status", "in", ["in_use", "finished", "reserved"])
-    .get();
+  const machinesSnap = await db.collection("machines").get();
+  const active = machinesSnap.docs.filter((item) => {
+    const status = String(item.data().status ?? "");
+    return status === "in_use" || status === "finished" || status === "reserved";
+  });
   const freeIds = new Set<string>();
   const labels = new Map<string, string>();
 
-  for (const machine of machinesSnap.docs) {
+  for (const machine of active) {
     const data = machine.data();
     labels.set(machine.id, String(data.label ?? machine.id));
     if (data.status === "maintenance") continue;
+    try {
 
     const finishMs = data.finishTime?.toMillis?.() as number | undefined;
     const almostMs = data.almostAt?.toMillis?.() as number | undefined;
@@ -95,7 +105,7 @@ export async function runLaundryTick() {
       );
       freeIds.add(machine.id);
       if (ownerUid) {
-        await sendPushToUid(
+        await safePush(
           ownerUid,
           "ระบบนำผ้าออกแล้ว",
           `${label} ระบบได้นำผ้าของคุณออกอัตโนมัติแล้ว`,
@@ -118,7 +128,7 @@ export async function runLaundryTick() {
     ) {
       await machine.ref.update({ almostAlertSent: true });
       const mins = remainingCycleMinutes(finishMs, now);
-      await sendPushToUid(
+      await safePush(
         data.ownerUid,
         "ใกล้เสร็จแล้ว",
         `${data.label ?? machine.id} ใกล้เสร็จแล้ว เหลืออีกประมาณ ${mins} นาที กรุณาเตรียมไปรับผ้า`,
@@ -134,34 +144,42 @@ export async function runLaundryTick() {
       });
       freeIds.add(machine.id);
     }
-  }
-
-  const watches = await db.collection("machineWatches").get();
-  const busyIds = new Set(machinesSnap.docs.map((item) => item.id));
-  const extraIds = new Set<string>();
-  for (const watch of watches.docs) {
-    const machineId = String(watch.data().machineId ?? "");
-    if (machineId && !busyIds.has(machineId) && !freeIds.has(machineId)) extraIds.add(machineId);
-  }
-  for (const id of extraIds) {
-    const extra = await db.collection("machines").doc(id).get();
-    const status = String(extra.data()?.status ?? "available");
-    if (status === "available") {
-      freeIds.add(id);
-      labels.set(id, String(extra.data()?.label ?? id));
+    } catch (error) {
+      console.error("tick machine failed", machine.id, error);
     }
   }
 
-  for (const watch of watches.docs) {
-    const data = watch.data();
-    const machineId = String(data.machineId ?? "");
-    const uid = String(data.uid ?? "");
-    if (!freeIds.has(machineId) || !uid) continue;
-    const label = labels.get(machineId) ?? machineId;
-    await sendPushToUid(uid, "เครื่องว่างแล้ว", `${label} ว่างแล้ว ไปสแกน QR ได้`, `${machineId}-free`);
-    await watch.ref.delete();
-  }
+  try {
+    const watches = await db.collection("machineWatches").get();
+    const busyIds = new Set(active.map((item) => item.id));
+    const extraIds = new Set<string>();
+    for (const watch of watches.docs) {
+      const machineId = String(watch.data().machineId ?? "");
+      if (machineId && !busyIds.has(machineId) && !freeIds.has(machineId)) extraIds.add(machineId);
+    }
+    for (const id of extraIds) {
+      const extra = await db.collection("machines").doc(id).get();
+      const status = String(extra.data()?.status ?? "available");
+      if (status === "available") {
+        freeIds.add(id);
+        labels.set(id, String(extra.data()?.label ?? id));
+      }
+    }
 
-  const cleaned = await cleanupStaleLogs();
-  return { ok: true, cleaned };
+    for (const watch of watches.docs) {
+      const data = watch.data();
+      const machineId = String(data.machineId ?? "");
+      const uid = String(data.uid ?? "");
+      if (!freeIds.has(machineId) || !uid) continue;
+      const label = labels.get(machineId) ?? machineId;
+      await safePush(uid, "เครื่องว่างแล้ว", `${label} ว่างแล้ว ไปสแกน QR ได้`, `${machineId}-free`);
+      await watch.ref.delete();
+    }
+
+    const cleaned = await cleanupStaleLogs();
+    return { ok: true, cleaned };
+  } catch (error) {
+    console.error("tick watches failed", error);
+    return { ok: true, cleaned: 0 };
+  }
 }

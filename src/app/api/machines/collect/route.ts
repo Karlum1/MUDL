@@ -49,7 +49,12 @@ export async function POST(request: Request) {
       const snap = await tx.get(ref);
       if (!snap.exists) throw new Error("MACHINE_NOT_FOUND");
       const data = snap.data() ?? {};
-      if (String(data.status ?? "") !== "finished") throw new Error("NOT_FINISHED");
+      const status = String(data.status ?? "");
+      const finishMs = data.finishTime?.toMillis?.() as number | undefined;
+      const timeUp = typeof finishMs === "number" && finishMs <= Date.now();
+      if (status !== "finished" && !(status === "in_use" && timeUp)) {
+        throw new Error("NOT_FINISHED");
+      }
       const ownerUid = typeof data.ownerUid === "string" ? data.ownerUid : "";
       const label = String(data.label ?? machineId);
       tx.update(ref, FREE_MACHINE);
@@ -63,12 +68,16 @@ export async function POST(request: Request) {
   }
 
   if (notify) {
-    await sendPushToUid(
-      notify.uid,
-      "มีคนเอาผ้าออกให้แล้ว",
-      `${notify.label} มีคนเอาผ้าออกให้คุณแล้วนะครับ`,
-      `${machineId}-collected`,
-    );
+    try {
+      await sendPushToUid(
+        notify.uid,
+        "มีคนเอาผ้าออกให้แล้ว",
+        `${notify.label} มีคนเอาผ้าออกให้คุณแล้วนะครับ`,
+        `${machineId}-collected`,
+      );
+    } catch (error) {
+      console.error("collect push failed", machineId, error);
+    }
   }
   return NextResponse.json({ ok: true });
 }

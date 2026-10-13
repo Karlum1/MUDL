@@ -4,12 +4,14 @@ import { CountdownTimer, CycleProgress } from "@/components/CountdownTimer";
 import { WashingMachineVisual } from "@/components/WashingMachineVisual";
 import { WatchBell } from "@/components/WatchBell";
 import { useLocale } from "@/components/AppProviders";
-import { displayOwnerName } from "@/lib/machines";
+import { actionErrorMessage } from "@/lib/errors";
+import { collectClothes, displayOwnerName } from "@/lib/machines";
 import { cycleCopy, etaPhrase } from "@/lib/dorms";
 import { t, statusLabel } from "@/lib/i18n";
 import { STATUS_COPY } from "@/lib/status";
 import type { Machine } from "@/lib/types";
 import Link from "next/link";
+import { useEffect, useState } from "react";
 
 export function MachineCard({
   machine,
@@ -23,6 +25,19 @@ export function MachineCard({
   const locale = useLocale();
   const copy = STATUS_COPY[machine.status];
   const verb = cycleCopy(machine.kind, machine.cycleMode, locale);
+  const [now, setNow] = useState(() => Date.now());
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const endsAt = machine.finishTime ?? machine.cycleEndsAt;
+  const timeUp = Boolean(endsAt && endsAt <= now);
+  const canCollectForThem =
+    !isMine && (machine.status === "finished" || (machine.status === "in_use" && timeUp));
+
+  useEffect(() => {
+    if (machine.status !== "in_use" && machine.status !== "finished") return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [machine.status]);
 
   return (
     <article
@@ -89,6 +104,24 @@ export function MachineCard({
           {machine.status === "in_use" ? t(locale, "viewMine") : t(locale, "manageMine")}
         </Link>
       ) : null}
+      {canCollectForThem && (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => {
+            if (!window.confirm(t(locale, "collectForThemConfirm"))) return;
+            setPending(true);
+            setError(null);
+            void collectClothes(machine.id)
+              .catch((err) => setError(actionErrorMessage(err)))
+              .finally(() => setPending(false));
+          }}
+          className="mt-4 w-full rounded-2xl bg-amber-300 px-4 py-3 text-sm font-semibold text-slate-950 hover:bg-amber-200 disabled:opacity-60"
+        >
+          {t(locale, "collectForThem")}
+        </button>
+      )}
+      {error && <p className="mt-2 text-sm text-bad">{error}</p>}
       {machine.status !== "maintenance" && (
         <div className="mt-4">
           <WatchBell

@@ -46,6 +46,10 @@ export function MachineActions({
   const [claimCode, setClaimCode] = useState<string | null>(null);
   const [fizz, setFizz] = useState(false);
   const [fizzDry, setFizzDry] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  const endsAt = machine.finishTime ?? machine.cycleEndsAt;
+  const timeUp = Boolean(endsAt && endsAt <= now);
+  const canCollect = machine.status === "finished" || (machine.status === "in_use" && timeUp);
   const copy = STATUS_COPY[machine.status];
   const verb = cycleCopy(machine.kind, machine.cycleMode, locale);
   const isOwner = Boolean(uid && machine.ownerUid === uid);
@@ -58,6 +62,12 @@ export function MachineActions({
 
   useEffect(() => {
     setAlertsOn(typeof Notification !== "undefined" && Notification.permission === "granted");
+  }, [machine.status]);
+
+  useEffect(() => {
+    if (machine.status !== "in_use") return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
   }, [machine.status]);
 
   async function run(
@@ -275,7 +285,7 @@ export function MachineActions({
         </div>
       )}
 
-      {machine.status === "in_use" && isMine && (
+      {machine.status === "in_use" && isMine && !timeUp && (
         <button
           type="button"
           disabled={pending}
@@ -286,7 +296,7 @@ export function MachineActions({
         </button>
       )}
 
-      {machine.status === "in_use" && !isMine && (
+      {machine.status === "in_use" && !isMine && !timeUp && (
         <p className="mt-8 text-sm text-muted">{t(locale, "othersUsing")}</p>
       )}
 
@@ -294,7 +304,7 @@ export function MachineActions({
         <WatchBell machineId={machine.id} uid={uid} busy />
       )}
 
-      {machine.status === "finished" && (
+      {canCollect && (
         <div className="mt-8">
           {!isMine && <p className="mb-3 text-sm text-muted">{t(locale, "anyoneCollect")}</p>}
           <button

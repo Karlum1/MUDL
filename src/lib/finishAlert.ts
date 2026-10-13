@@ -24,11 +24,15 @@ export async function deliverFinishAlert(
     return { uid, label };
   });
   if (!claimed?.uid) return false;
-  await sendPushToUid(
-    claimed.uid,
-    "ซักเสร็จแล้ว",
-    `${claimed.label} เสร็จแล้ว กรุณาเอาผ้าออก`,
-    `${machineId}-finished`,
-  );
+  try {
+    await sendPushToUid(
+      claimed.uid,
+      "ซักเสร็จแล้ว",
+      `${claimed.label} เสร็จแล้ว กรุณาเอาผ้าออก`,
+      `${machineId}-finished`,
+    );
+  } catch (error) {
+    console.error("finish push failed", machineId, error);
+  }
   return true;
 }

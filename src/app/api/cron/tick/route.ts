@@ -18,8 +18,16 @@ export async function GET(request: Request) {
   if (!authorized(request)) {
     return NextResponse.json({ error: "UNAUTHORIZED" }, { status: 401 });
   }
-  const result = await runLaundryTick();
-  return NextResponse.json(result);
+  try {
+    const result = await runLaundryTick();
+    return NextResponse.json(result);
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { ok: false, error: error instanceof Error ? error.message : "TICK_FAILED" },
+      { status: 500 },
+    );
+  }
 }
 
 export async function POST(request: Request) {
