@@ -37,11 +37,38 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "AUTH_REQUIRED" }, { status: 401 });
   }
 
-  const body = (await request.json().catch(() => null)) as { machineId?: unknown } | null;
+  const body = (await request.json().catch(() => null)) as {
+    machineId?: unknown;
+    notifyOnly?: unknown;
+    ownerUid?: unknown;
+    label?: unknown;
+  } | null;
   const machineId = typeof body?.machineId === "string" ? body.machineId : "";
   if (!machineId) return NextResponse.json({ error: "BAD_REQUEST" }, { status: 400 });
 
   const db = getAdminDb();
+  if (body?.notifyOnly === true) {
+    const ownerUid = typeof body.ownerUid === "string" ? body.ownerUid : "";
+    const label = typeof body.label === "string" ? body.label : machineId;
+    if (!ownerUid || ownerUid === uid) return NextResponse.json({ ok: true });
+    const snap = await db.collection("machines").doc(machineId).get();
+    const status = String(snap.data()?.status ?? "");
+    if (status !== "available") {
+      return NextResponse.json({ error: "NOT_FINISHED" }, { status: 403 });
+    }
+    try {
+      await sendPushToUid(
+        ownerUid,
+        "มีคนเอาผ้าออกให้แล้ว",
+        `${label} มีคนเอาผ้าออกให้คุณแล้วนะครับ`,
+        `${machineId}-collected`,
+      );
+    } catch (error) {
+      console.error("collect push failed", machineId, error);
+    }
+    return NextResponse.json({ ok: true });
+  }
+
   const ref = db.collection("machines").doc(machineId);
   let notify: { uid: string; label: string } | null = null;
   try {

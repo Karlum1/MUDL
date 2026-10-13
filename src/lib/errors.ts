@@ -28,7 +28,7 @@ const TH: Record<string, string> = {
     "โควต้า Firebase เต็มชั่วคราว — รอสักครู่แล้วลองใหม่ หรือเช็ค Usage ใน Console",
   SCAN_REQUIRED: "สแกน QR ที่เครื่องก่อนตั้งเวลา",
   "permission-denied":
-    "Firestore ปฏิเสธการเขียน — Publish กฎใน Console แล้วเปิด Anonymous Auth",
+    "Firestore ยังใช้กฎเก่าที่ให้เฉพาะเจ้าของเอาผ้าออก — Publish กฎใหม่ใน Console",
   "failed-precondition": "Firestore ยังสร้าง index ไม่เสร็จ ลองอีกครั้งในอีกสักครู่",
 };
 
@@ -59,7 +59,7 @@ const EN: Record<string, string> = {
     "Firebase quota is exhausted — wait a bit and try again, or check Usage in the Console",
   SCAN_REQUIRED: "Scan the machine QR before starting",
   "permission-denied":
-    "Firestore blocked the write — publish rules and enable Anonymous Auth",
+    "Firestore is still on the old owner-only rule — publish the updated rules",
   "failed-precondition": "A Firestore index is still building. Try again shortly.",
 };
 
