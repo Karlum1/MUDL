@@ -441,75 +441,8 @@ const FREE_MACHINE = {
   finishAlertSent: false,
 };
 
-function permissionDenied(error: unknown) {
-  const code =
-    error && typeof error === "object" && "code" in error
-      ? String((error as { code: string }).code)
-      : "";
-  const message = error instanceof Error ? error.message : "";
-  return code.includes("permission") || message.includes("permission");
-}
-
 export async function collectClothes(id: string) {
-  try {
-    await collectClothesDirect(id);
-  } catch (error) {
-    if (!permissionDenied(error)) throw error;
-    await collectClothesViaApi(id);
-  }
-}
-
-async function collectClothesDirect(id: string) {
-  const user = await ensureAnonymousUser();
-  const db = getFirebaseDb();
-  const ref = doc(db, MACHINES_COLLECTION, id);
-  let notify: { uid: string; label: string } | null = null;
-
-  await runTransaction(db, async (tx) => {
-    const snap = await tx.get(ref);
-    if (!snap.exists()) throw new Error("MACHINE_NOT_FOUND");
-    const current = machineFromDoc(id, snap.data());
-    if (current.status !== "finished") throw new Error("NOT_FINISHED");
-    if (current.ownerUid && current.ownerUid !== user.uid) {
-      notify = { uid: current.ownerUid, label: current.label };
-    }
-    tx.update(ref, FREE_MACHINE);
-  });
-
-  writeMyCycle(null);
-  forgetClaim(id);
-  if (!notify) return;
-  const idToken = await user.getIdToken();
-  await fetch("/api/machines/collect", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${idToken}`,
-    },
-    body: JSON.stringify({
-      machineId: id,
-      notifyOnly: true,
-      ownerUid: notify.uid,
-      label: notify.label,
-    }),
-  }).catch(() => undefined);
-}
-
-async function collectClothesViaApi(id: string) {
-  const user = await ensureAnonymousUser();
-  const idToken = await user.getIdToken();
-  const response = await fetch("/api/machines/collect", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${idToken}`,
-    },
-    body: JSON.stringify({ machineId: id }),
-  });
-  const data = (await response.json().catch(() => null)) as { error?: string } | null;
-  if (!response.ok) throw new Error(data?.error || "RELEASE_FAILED");
-  writeMyCycle(null);
-  forgetClaim(id);
+  await releaseMachine(id, "finished", "NOT_FINISHED");
 }
 
 export async function cancelCycle(id: string) {

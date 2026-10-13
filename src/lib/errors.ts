@@ -4,8 +4,7 @@ const TH: Record<string, string> = {
   MACHINE_BUSY: "เครื่องนี้กำลังถูกใช้หรือยังมีผ้าอยู่",
   NOT_FINISHED: "ยังซักไม่เสร็จ ไม่สามารถเคลียร์ผ้าได้",
   MACHINE_NOT_FOUND: "ไม่พบเครื่องนี้",
-  NOT_OWNER: "ยกเลิกเวลานี้ได้เฉพาะคนที่เริ่มรอบ",
-  AUTH_REQUIRED: "เข้าสู่ระบบไม่สำเร็จ ลองอีกครั้ง",
+  NOT_OWNER: "รอบนี้ไม่ใช่ของคุณ — ยกเลิกหรือเอาผ้าออกได้เฉพาะคนที่ตั้งเวลา",
   BAD_CODE: "รหัสเอาผ้าไม่ตรง",
   NOT_IN_USE: "เครื่องนี้ไม่ได้กำลังซักอยู่",
   NOT_YOUR_TURN: "ยังไม่ถึงคิวคุณ ดูเลขคิวที่แดชบอร์ดหรือจอคิว",
@@ -28,7 +27,7 @@ const TH: Record<string, string> = {
     "โควต้า Firebase เต็มชั่วคราว — รอสักครู่แล้วลองใหม่ หรือเช็ค Usage ใน Console",
   SCAN_REQUIRED: "สแกน QR ที่เครื่องก่อนตั้งเวลา",
   "permission-denied":
-    "Firestore ยังใช้กฎเก่าที่ให้เฉพาะเจ้าของเอาผ้าออก — Publish กฎใหม่ใน Console",
+    "Firestore ปฏิเสธการเขียน — Publish กฎใน Console แล้วเปิด Anonymous Auth",
   "failed-precondition": "Firestore ยังสร้าง index ไม่เสร็จ ลองอีกครั้งในอีกสักครู่",
 };
 
@@ -36,8 +35,7 @@ const EN: Record<string, string> = {
   MACHINE_BUSY: "This machine is in use or still has clothes in it",
   NOT_FINISHED: "The cycle is not finished yet",
   MACHINE_NOT_FOUND: "Machine not found",
-  NOT_OWNER: "Only the person who started this cycle can cancel it",
-  AUTH_REQUIRED: "Sign-in failed. Try again",
+  NOT_OWNER: "This cycle is not yours — only the person who started it can cancel or collect",
   BAD_CODE: "That collect code does not match",
   NOT_IN_USE: "This machine is not running",
   NOT_YOUR_TURN: "Not your turn yet",
@@ -59,7 +57,7 @@ const EN: Record<string, string> = {
     "Firebase quota is exhausted — wait a bit and try again, or check Usage in the Console",
   SCAN_REQUIRED: "Scan the machine QR before starting",
   "permission-denied":
-    "Firestore is still on the old owner-only rule — publish the updated rules",
+    "Firestore blocked the write — publish rules and enable Anonymous Auth",
   "failed-precondition": "A Firestore index is still building. Try again shortly.",
 };
 

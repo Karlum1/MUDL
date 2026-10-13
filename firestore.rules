@@ -11,19 +11,6 @@ service cloud.firestore {
         || resource.data.ownerUid == request.auth.uid;
     }
 
-    function same(field) {
-      return request.resource.data.get(field, null) == resource.data.get(field, null);
-    }
-
-    function cycleFinished() {
-      return resource.data.status == 'finished'
-        || (
-          resource.data.status == 'in_use'
-          && resource.data.finishTime is timestamp
-          && resource.data.finishTime <= request.time
-        );
-    }
-
     match /machines/{machineId} {
       allow read: if true;
       allow create: if isAuth()
@@ -54,22 +41,6 @@ service cloud.firestore {
           isOwner()
           && request.resource.data.status == 'available'
           && resource.data.status in ['finished', 'in_use', 'available']
-        )
-        ||
-        (
-          cycleFinished()
-          && request.resource.data.status == 'available'
-          && request.resource.data.ownerUid == null
-          && request.resource.data.ownerName == null
-          && request.resource.data.ownerPhone == null
-          && request.resource.data.claimHash == null
-          && same('label')
-          && same('dormId')
-          && same('floor')
-          && same('kind')
-          && same('look')
-          && same('number')
-          && same('maintenanceNote')
         )
       );
     }
