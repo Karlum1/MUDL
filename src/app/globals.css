@@ -536,6 +536,14 @@ body {
   }
 }
 
+html[data-install-gate="1"] body > *:not([data-install-dialog]) {
+  visibility: hidden;
+}
+
+html[data-install-gate="1"] [data-install-dialog] {
+  visibility: visible;
+}
+
 @media print {
   .qr-dorm {
     break-inside: avoid;

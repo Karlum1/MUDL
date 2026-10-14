@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Noto_Sans_Thai } from "next/font/google";
+import { InstallGate } from "@/components/InstallGate";
 import { AppProviders } from "@/components/AppProviders";
 import { MachineLiveProvider } from "@/hooks/useMachineLive";
+import { INSTALL_GATE_BOOT } from "@/lib/installGate";
 import { LOCALE_BOOT } from "@/lib/i18n";
 import { THEME_BOOT } from "@/lib/theme";
 import "./globals.css";
@@ -48,12 +50,20 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} ${notoThai.variable} h-full antialiased`}
     >
       <head>
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0&icon_names=ios_share,more_vert&display=block"
+        />
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT }} />
         <script dangerouslySetInnerHTML={{ __html: LOCALE_BOOT }} />
+        <script dangerouslySetInnerHTML={{ __html: INSTALL_GATE_BOOT }} />
       </head>
       <body className="flex min-h-full flex-col bg-background text-foreground">
         <AppProviders>
-          <MachineLiveProvider>{children}</MachineLiveProvider>
+          <MachineLiveProvider>
+            {children}
+            <InstallGate />
+          </MachineLiveProvider>
         </AppProviders>
       </body>
     </html>
