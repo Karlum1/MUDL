@@ -16,6 +16,8 @@ import {
 import { ensureAnonymousUser } from "@/lib/auth";
 import { bumpDailyStats } from "@/lib/dailyStats";
 import {
+  MAX_CYCLE_MINUTES,
+  MIN_CYCLE_MINUTES,
   SEED_MACHINES,
   dormById,
   dormSortIndex,
@@ -309,15 +311,16 @@ export function displayOwnerName(
   return locale === "en" ? "Anonymous" : ANON_OWNER_NAME;
 }
 
-export async function reportMachineIssue(id: string, note: string, category = "") {
+export async function reportAppBug(note: string) {
+  const text = note.trim().slice(0, 200);
+  if (!text) throw new Error("EMPTY_BUG");
   await ensureAnonymousUser();
   const db = getFirebaseDb();
-  const text = note.trim().slice(0, 200) || "แจ้งเครื่องเสีย";
   await addDoc(collection(db, MAINTENANCE_LOGS_COLLECTION), {
-    machineId: id,
+    machineId: "app",
     action: "report",
     note: text,
-    category: category.slice(0, 32),
+    category: "bug",
     createdAt: Timestamp.now(),
   });
 }
@@ -336,7 +339,10 @@ export async function startMachine(
   const user = await ensureAnonymousUser();
   const db = getFirebaseDb();
   const ref = doc(db, MACHINES_COLLECTION, id);
-  if (minutes !== "demo" && (!Number.isFinite(minutes) || minutes < 1 || minutes > 180)) {
+  if (
+    minutes !== "demo" &&
+    (!Number.isFinite(minutes) || minutes < MIN_CYCLE_MINUTES || minutes > MAX_CYCLE_MINUTES)
+  ) {
     throw new Error("INVALID_MINUTES");
   }
   const durationMs =

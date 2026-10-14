@@ -11,8 +11,8 @@ export const STATUS_COPY: Record<
     glow: "shadow-[0_0_24px_-8px_rgba(52,211,153,0.55)]",
   },
   in_use: {
-    th: "กำลังใช้งาน / เต็ม",
-    en: "In Use / Full",
+    th: "กำลังใช้งาน",
+    en: "In use",
     badge: "bg-sky-400/15 text-[color:var(--status-busy)] ring-1 ring-sky-400/30",
     glow: "shadow-[0_0_24px_-8px_rgba(56,189,248,0.45)]",
   },

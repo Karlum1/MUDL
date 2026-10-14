@@ -412,7 +412,7 @@ export default function AdminPage() {
           <div className="mt-3 flex flex-wrap gap-2">
             {(
               [
-                ["report", "แจ้งเสีย"],
+                ["report", "แจ้งบัค"],
                 ["maintenance", "ปิดปรับปรุง"],
                 ["reopen", "เปิดใช้ใหม่"],
                 ["command", "คำสั่งผู้ดูแล"],
@@ -716,7 +716,9 @@ function LogRow({ log }: { log: MaintenanceLog }) {
   return (
     <article className="rounded-2xl bg-chip px-4 py-3 text-sm">
       <p className="text-foreground">
-        {ACTION_LABEL[log.action] ?? log.action} · {log.machineId}
+        {log.category === "bug"
+          ? "แจ้งบัค"
+          : `${ACTION_LABEL[log.action] ?? log.action} · ${log.machineId}`}
       </p>
       {category && (
         <p className="mt-2 inline-flex rounded-full bg-accent px-3 py-1 text-sm font-semibold text-accent-fg">

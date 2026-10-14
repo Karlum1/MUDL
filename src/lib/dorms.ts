@@ -121,7 +121,7 @@ export type CycleMode = "wash" | "dry";
 export const WASH_MINUTES = [30] as const;
 export const DRY_MINUTES = [32, 40, 48] as const;
 export const MIN_CYCLE_MINUTES = 1;
-export const MAX_CYCLE_MINUTES = 180;
+export const MAX_CYCLE_MINUTES = 90;
 
 export function formatCycleLabel(minutes: number, locale: Locale = "th") {
   const n = Math.round(minutes);

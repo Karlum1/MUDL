@@ -59,13 +59,26 @@ function MachineTile({ machine, locale }: { machine: Machine; locale: "th" | "en
           )}
         </div>
       ) : (
-        <p className="shrink-0 text-lg text-muted">
-          {machine.status === "finished"
-            ? verb.done
-            : machine.status === "maintenance"
-              ? t(locale, "closedRepair")
-              : t(locale, "free")}
-        </p>
+        machine.status === "finished" ? (
+          <span
+            className="material-symbols-outlined shrink-0 leading-none text-yellow-400"
+            style={{ fontSize: "2.5rem", fontVariationSettings: "'FILL' 1" }}
+            aria-label={verb.done}
+            title={verb.done}
+          >
+            check_circle
+          </span>
+        ) : (
+          <p
+            className={`shrink-0 ${
+              machine.status === "available"
+                ? "text-4xl font-semibold text-ok"
+                : "text-lg text-muted"
+            }`}
+          >
+            {machine.status === "maintenance" ? t(locale, "closedRepair") : t(locale, "free")}
+          </p>
+        )
       )}
     </article>
   );
