@@ -1,7 +1,6 @@
 import "server-only";
 
 import { cert, getApps, initializeApp } from "firebase-admin/app";
-import { getAuth } from "firebase-admin/auth";
 import { getFirestore } from "firebase-admin/firestore";
 import { getMessaging } from "firebase-admin/messaging";
 
@@ -43,10 +42,6 @@ export function getAdminApp() {
 
 export function getAdminDb() {
   return getFirestore(getAdminApp());
-}
-
-export function getAdminAuth() {
-  return getAuth(getAdminApp());
 }
 
 export function getAdminMessaging() {
