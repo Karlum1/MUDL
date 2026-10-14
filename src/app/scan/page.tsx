@@ -1,6 +1,7 @@
 "use client";
 
 import { QrScanner } from "@/components/QrScanner";
+import { ScanNotifyGate } from "@/components/ScanNotifyGate";
 import { SiteHeader } from "@/components/SiteHeader";
 import { useLocale } from "@/components/AppProviders";
 import { t } from "@/lib/i18n";
@@ -31,9 +32,11 @@ export default function ScanPage() {
         <p className="mt-2 text-muted">
           {t(locale, "scanLead")}
         </p>
-        <div className="mt-8">
-          <QrScanner onDetect={onDetect} />
-        </div>
+        <ScanNotifyGate>
+          <div className="mt-8">
+            <QrScanner onDetect={onDetect} />
+          </div>
+        </ScanNotifyGate>
       </main>
     </div>
   );

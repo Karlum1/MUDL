@@ -2,26 +2,94 @@
 
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { WashingMachineVisual } from "@/components/WashingMachineVisual";
-import { DORMS, PUBLIC_DORM_IDS, cycleCopy, etaPhrase } from "@/lib/dorms";
+import { DORMS, PUBLIC_DORM_IDS, cycleCopy, etaPhrase, type DormId } from "@/lib/dorms";
 import { displayOwnerName } from "@/lib/machines";
 import { STATUS_COPY } from "@/lib/status";
-import { bangkokDateKey, bangkokDateLabel } from "@/lib/day";
 import { useMachineLive } from "@/hooks/useMachineLive";
 import { useLocale } from "@/components/AppProviders";
 import { t, statusLabel } from "@/lib/i18n";
-import Link from "next/link";
+import type { Machine } from "@/lib/types";
 import { useEffect, useRef, useState } from "react";
+
+const DORM_PHOTO: Partial<Record<DormId, string>> = {
+  int: "/dorms/int.jpg",
+};
+
+function bangkokNowLabel(now: Date) {
+  return new Intl.DateTimeFormat("th-TH", {
+    timeZone: "Asia/Bangkok",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false,
+  }).format(now);
+}
+
+function MachineTile({ machine, locale }: { machine: Machine; locale: "th" | "en" }) {
+  const copy = STATUS_COPY[machine.status];
+  const verb = cycleCopy(machine.kind, machine.cycleMode, locale);
+  const endsAt = machine.finishTime ?? machine.cycleEndsAt;
+  return (
+    <article className="flex min-h-36 items-center justify-between gap-4 rounded-[1.75rem] border border-line bg-surface px-5 py-4">
+      <div className="flex min-w-0 items-center gap-4">
+        <WashingMachineVisual
+          status={machine.status}
+          size="lg"
+          kind={machine.kind}
+          look={machine.look}
+          cycleMode={machine.cycleMode}
+        />
+        <div className="min-w-0">
+          <p className="truncate text-2xl font-semibold">{machine.label}</p>
+          <p className="mt-1 text-base text-muted">{statusLabel(copy, locale)}</p>
+          {(machine.status === "in_use" || machine.status === "finished") && (
+            <p className="mt-1 truncate text-lg text-accent">
+              {displayOwnerName(machine.ownerName, locale)}
+            </p>
+          )}
+        </div>
+      </div>
+      {machine.status === "in_use" ? (
+        <div className="shrink-0 text-right">
+          <CountdownTimer endsAt={endsAt} />
+          {endsAt && (
+            <p className="mt-1 text-sm text-muted">
+              {etaPhrase(machine.kind, machine.cycleMode, endsAt, locale)}
+            </p>
+          )}
+        </div>
+      ) : (
+        <p className="shrink-0 text-lg text-muted">
+          {machine.status === "finished"
+            ? verb.done
+            : machine.status === "maintenance"
+              ? t(locale, "closedRepair")
+              : t(locale, "free")}
+        </p>
+      )}
+    </article>
+  );
+}
 
 export default function BoardPage() {
   const locale = useLocale();
   const rootRef = useRef<HTMLDivElement>(null);
   const sawLive = useRef(false);
   const [fullscreen, setFullscreen] = useState(false);
+  const [clock, setClock] = useState("");
   const { machines, connected } = useMachineLive({
     dormIds: [...PUBLIC_DORM_IDS],
   });
-  const dateKey = bangkokDateKey();
   const visibleDorms = DORMS.filter((dorm) => machines.some((item) => item.dormId === dorm.id));
+  const washers = machines.filter((item) => item.kind !== "dryer");
+  const dryers = machines.filter((item) => item.kind === "dryer");
+
+  useEffect(() => {
+    const tick = () => setClock(bangkokNowLabel(new Date()));
+    tick();
+    const id = window.setInterval(tick, 1000);
+    return () => window.clearInterval(id);
+  }, []);
 
   useEffect(() => {
     let lock: WakeLockSentinel | null = null;
@@ -71,104 +139,84 @@ export default function BoardPage() {
   }
 
   return (
-    <div ref={rootRef} className="flex min-h-screen flex-col bg-background text-foreground">
-      <header className="flex items-center justify-between px-6 py-4">
-        <div>
-          <p className="text-xs tracking-[0.18em] text-accent">{"Scan&Wash"}</p>
-          <h1 className="text-2xl font-semibold">{t(locale, "boardTitle")} · {bangkokDateLabel(dateKey)}</h1>
-        </div>
-        <div className="flex shrink-0 items-center gap-3 text-sm">
-          <span className={connected ? "text-ok" : "text-warn"}>
-            {connected ? t(locale, "live") : t(locale, "connecting")}
-          </span>
-          <button
-            type="button"
-            onClick={() => void toggleFullscreen()}
-            className="rounded-full bg-accent px-4 py-2 font-semibold text-accent-fg"
-          >
-            {fullscreen ? t(locale, "boardExitFull") : t(locale, "boardFullscreen")}
-          </button>
-          <Link href="/" className="rounded-full px-3 py-2 font-semibold text-muted hover:text-foreground">
-            {t(locale, "backHome")}
-          </Link>
-        </div>
-      </header>
-
-      <main className="space-y-8 px-6 pb-8">
-        {visibleDorms.length === 0 && (
-          <p className="rounded-3xl border border-line bg-surface p-8 text-center text-muted">
-            {t(locale, "loadingMachines")}
-          </p>
-        )}
-        {visibleDorms.map((dorm) => {
-          const dormMachines = machines.filter((item) => item.dormId === dorm.id);
-          return (
-            <section key={dorm.id}>
-              <h2 className="mb-3 text-lg font-semibold">
-                {dorm.name} ({dorm.halls})
-              </h2>
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-                {dormMachines.map((machine) => {
-                  const copy = STATUS_COPY[machine.status];
-                  const verb = cycleCopy(machine.kind, machine.cycleMode, locale);
-                  const endsAt = machine.finishTime ?? machine.cycleEndsAt;
-                  return (
-                    <article
-                      key={machine.id}
-                      className="rounded-3xl border border-line bg-surface px-4 py-3"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <WashingMachineVisual
-                            status={machine.status}
-                            size="sm"
-                            kind={machine.kind}
-                            look={machine.look}
-                            cycleMode={machine.cycleMode}
-                          />
-                          <div>
-                            <p className="font-semibold">{machine.label}</p>
-                            <p className="text-xs text-muted">{statusLabel(copy, locale)}</p>
-                            {machine.status === "in_use" && (
-                              <p className="mt-1 text-sm text-accent">
-                                {displayOwnerName(machine.ownerName, locale)}
-                              </p>
-                            )}
-                            {machine.status === "finished" && (
-                              <p className="mt-1 text-sm text-accent">
-                                {displayOwnerName(machine.ownerName, locale)}
-                                {machine.ownerPhone ? ` · ${machine.ownerPhone}` : ""}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-                        {machine.status === "in_use" ? (
-                          <div className="text-right">
-                            <CountdownTimer endsAt={endsAt} compact />
-                            {endsAt && (
-                              <p className="mt-1 text-xs text-muted">
-                                {etaPhrase(machine.kind, machine.cycleMode, endsAt, locale)}
-                              </p>
-                            )}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted">
-                            {machine.status === "finished"
-                              ? verb.done
-                              : machine.status === "maintenance"
-                                ? t(locale, "closedRepair")
-                                : t(locale, "free")}
-                          </p>
-                        )}
-                      </div>
-                    </article>
-                  );
-                })}
+    <div ref={rootRef} className="min-h-screen bg-background text-foreground">
+      <div className="grid min-h-screen grid-cols-[minmax(220px,36%)_1fr] gap-8 p-4 lg:gap-12 lg:p-6">
+        <aside className="relative min-h-[70vh]">
+          {visibleDorms.length === 0 && (
+            <div className="absolute inset-0 rounded-[2rem] bg-surface" />
+          )}
+          {visibleDorms.map((dorm) => {
+            const photo = DORM_PHOTO[dorm.id];
+            return (
+              <div
+                key={dorm.id}
+                className="absolute inset-0 overflow-hidden rounded-[2rem] bg-slate-900"
+              >
+                {photo && (
+                  <img
+                    src={photo}
+                    alt=""
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                )}
+                <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-black/75 via-black/35 to-transparent px-6 pb-16 pt-6">
+                  <p className="text-4xl font-semibold leading-tight text-white drop-shadow-md">
+                    {dorm.name}
+                  </p>
+                  <p className="mt-1 text-xl text-white/90 drop-shadow-md">{dorm.halls}</p>
+                </div>
               </div>
-            </section>
-          );
-        })}
-      </main>
+            );
+          })}
+        </aside>
+
+        <main className="flex min-w-0 flex-col gap-12 pt-6 lg:gap-16 lg:pt-10">
+          <div className="flex items-start justify-between gap-4">
+            <p
+              className="text-6xl font-semibold tabular-nums tracking-tight sm:text-7xl lg:text-8xl"
+              suppressHydrationWarning
+            >
+              {clock || "00:00:00"}
+            </p>
+            <div className="flex shrink-0 items-center gap-3 pt-3 text-sm">
+              <span className={connected ? "text-ok" : "text-warn"}>
+                {connected ? t(locale, "live") : t(locale, "connecting")}
+              </span>
+              <button
+                type="button"
+                onClick={() => void toggleFullscreen()}
+                className="rounded-full bg-accent px-4 py-2 font-semibold text-accent-fg"
+              >
+                {fullscreen ? t(locale, "boardExitFull") : t(locale, "boardFullscreen")}
+              </button>
+            </div>
+          </div>
+
+          {machines.length === 0 && (
+            <p className="rounded-3xl border border-line bg-surface p-8 text-center text-muted">
+              {t(locale, "loadingMachines")}
+            </p>
+          )}
+
+          <section>
+            <h2 className="mb-3 text-2xl font-semibold">{t(locale, "boardWash")}</h2>
+            <div className="grid gap-4 xl:grid-cols-2">
+              {washers.map((machine) => (
+                <MachineTile key={machine.id} machine={machine} locale={locale} />
+              ))}
+            </div>
+          </section>
+
+          <section>
+            <h2 className="mb-3 text-2xl font-semibold">{t(locale, "boardDry")}</h2>
+            <div className="grid gap-4 xl:grid-cols-2">
+              {dryers.map((machine) => (
+                <MachineTile key={machine.id} machine={machine} locale={locale} />
+              ))}
+            </div>
+          </section>
+        </main>
+      </div>
     </div>
   );
 }
