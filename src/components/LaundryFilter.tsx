@@ -108,6 +108,40 @@ function Chip({
   );
 }
 
+export function DormFilter({
+  options,
+  selected,
+  onToggle,
+  onClear,
+}: {
+  options: { id: DormId; label: string }[];
+  selected: DormId[];
+  onToggle: (id: DormId) => void;
+  onClear: () => void;
+}) {
+  const locale = useLocale();
+  if (options.length < 2) return null;
+  return (
+    <div className="mb-6">
+      <p className="mb-2 text-[11px] uppercase tracking-[0.16em] text-muted">{t(locale, "dorms")}</p>
+      <div className="flex flex-wrap gap-2">
+        <Chip active={selected.length === 0} onClick={onClear}>
+          {t(locale, "allDorms")}
+        </Chip>
+        {options.map((dorm) => (
+          <Chip
+            key={dorm.id}
+            active={selected.includes(dorm.id)}
+            onClick={() => onToggle(dorm.id)}
+          >
+            {dorm.label}
+          </Chip>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function LaundryFilter({
   dormIds,
   kinds,

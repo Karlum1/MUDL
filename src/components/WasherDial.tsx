@@ -41,16 +41,40 @@ function pointAngle(cx: number, cy: number, x: number, y: number) {
   return ((rad * 180) / Math.PI + 90 + 360) % 360;
 }
 
+const DIAL_TONE = {
+  wash: {
+    arc: "#67e8f9",
+    well: "#164e63",
+    drum: "#0e7490",
+    ticks: "#a5f3fc",
+    knob: "#67e8f9",
+    knobEdge: "#ecfeff",
+    numeral: "#ecfeff",
+  },
+  dry: {
+    arc: "#f97316",
+    well: "#9a3412",
+    drum: "#f97316",
+    ticks: "#ffedd5",
+    knob: "#f97316",
+    knobEdge: "#fff7ed",
+    numeral: "#fff7ed",
+  },
+} as const;
+
 export function WasherDial({
   value,
   onChange,
   disabled = false,
+  tone = "wash",
 }: {
   value: number;
   onChange: (minutes: number) => void;
   disabled?: boolean;
+  tone?: "wash" | "dry";
 }) {
   const locale = useLocale();
+  const paint = DIAL_TONE[tone];
   const clipId = useId().replace(/:/g, "");
   const svgRef = useRef<SVGSVGElement>(null);
   const lastRef = useRef(value);
@@ -128,28 +152,28 @@ export function WasherDial({
           <path
             d={describeArc(100, 100, 72, -90, angle - 90)}
             fill="none"
-            stroke="#67e8f9"
+            stroke={paint.arc}
             strokeWidth="10"
             strokeLinecap="round"
           />
         )}
-        <circle cx="100" cy="100" r="52" fill="#164e63" />
+        <circle cx="100" cy="100" r="52" fill={paint.well} />
         <g clipPath={`url(#${clipId})`}>
           <g className="washer-drum">
-            <circle cx="100" cy="100" r="46" fill="#0e7490" opacity="0.45" />
+            <circle cx="100" cy="100" r="46" fill={paint.drum} opacity="0.45" />
             <circle
               cx="100"
               cy="100"
               r="34"
               fill="none"
-              stroke="#a5f3fc"
+              stroke={paint.ticks}
               strokeWidth="3"
               strokeDasharray="8 7"
             />
           </g>
         </g>
-        <circle cx={knobX} cy={knobY} r="11" fill="#67e8f9" stroke="#ecfeff" strokeWidth="2" />
-        <text x="100" y="106" textAnchor="middle" fill="#ecfeff" fontSize="22" fontWeight="700">
+        <circle cx={knobX} cy={knobY} r="11" fill={paint.knob} stroke={paint.knobEdge} strokeWidth="2" />
+        <text x="100" y="106" textAnchor="middle" fill={paint.numeral} fontSize="22" fontWeight="700">
           {value}
         </text>
       </svg>

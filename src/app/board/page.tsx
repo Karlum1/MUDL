@@ -2,7 +2,7 @@
 
 import { CountdownTimer } from "@/components/CountdownTimer";
 import { WashingMachineVisual } from "@/components/WashingMachineVisual";
-import { DORMS, PUBLIC_DORM_IDS, cycleCopy, etaPhrase, type DormId } from "@/lib/dorms";
+import { BOARD_DORM_IDS, DORMS, cycleCopy, etaPhrase, type DormId } from "@/lib/dorms";
 import { displayOwnerName } from "@/lib/machines";
 import { STATUS_COPY } from "@/lib/status";
 import { useMachineLive } from "@/hooks/useMachineLive";
@@ -91,7 +91,7 @@ export default function BoardPage() {
   const [fullscreen, setFullscreen] = useState(false);
   const [clock, setClock] = useState("");
   const { machines, connected } = useMachineLive({
-    dormIds: [...PUBLIC_DORM_IDS],
+    dormIds: [...BOARD_DORM_IDS],
   });
   const visibleDorms = DORMS.filter((dorm) => machines.some((item) => item.dormId === dorm.id));
   const washers = machines.filter((item) => item.kind !== "dryer");

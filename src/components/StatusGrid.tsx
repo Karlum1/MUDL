@@ -2,7 +2,7 @@
 
 import { MachineCard } from "@/components/MachineCard";
 import { useLocale } from "@/components/AppProviders";
-import { DORMS } from "@/lib/dorms";
+import { DORMS, PUBLIC_DORM_IDS } from "@/lib/dorms";
 import { t } from "@/lib/i18n";
 import type { Machine } from "@/lib/types";
 
@@ -24,10 +24,16 @@ export function StatusGrid({
     );
   }
 
-  const visibleDorms = DORMS.filter((dorm) => machines.some((item) => item.dormId === dorm.id));
+  const visibleDorms = DORMS.filter((dorm) => machines.some((item) => item.dormId === dorm.id)).sort(
+    (a, b) => {
+      const ai = PUBLIC_DORM_IDS.indexOf(a.id);
+      const bi = PUBLIC_DORM_IDS.indexOf(b.id);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    },
+  );
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-16 lg:space-y-20">
       {visibleDorms.map((dorm) => {
         const dormMachines = machines.filter((m) => m.dormId === dorm.id);
         const free = dormMachines.filter((m) => m.status === "available").length;

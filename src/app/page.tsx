@@ -3,16 +3,28 @@
 import { NotificationDock } from "@/components/NotificationDock";
 import { SiteHeader } from "@/components/SiteHeader";
 import { StatusGrid } from "@/components/StatusGrid";
+import { DormFilter, useLaundryFilter } from "@/components/LaundryFilter";
 import { useLocale } from "@/components/AppProviders";
 import { useMachineLive } from "@/hooks/useMachineLive";
-import { PUBLIC_DORM_IDS } from "@/lib/dorms";
+import { DORMS, PUBLIC_DORM_IDS } from "@/lib/dorms";
 import { t } from "@/lib/i18n";
 
 export default function HomePage() {
   const locale = useLocale();
+  const filter = useLaundryFilter();
   const { machines, connected, configured, error, uid } = useMachineLive({
     dormIds: [...PUBLIC_DORM_IDS],
   });
+  const dormOptions = PUBLIC_DORM_IDS.flatMap((id) => {
+    const dorm = DORMS.find((item) => item.id === id);
+    if (!dorm || !machines.some((machine) => machine.dormId === id)) return [];
+    return [{ id, label: dorm.halls }];
+  });
+  const selectedDorms = filter.dormIds.filter((id) => dormOptions.some((dorm) => dorm.id === id));
+  const visibleMachines =
+    selectedDorms.length === 0
+      ? machines
+      : machines.filter((machine) => selectedDorms.includes(machine.dormId as (typeof PUBLIC_DORM_IDS)[number]));
 
   return (
     <div className="flex min-h-full flex-col">
@@ -52,7 +64,13 @@ export default function HomePage() {
           )}
 
           <div className={machines.length === 0 || !configured || error ? "mt-8" : undefined}>
-            <StatusGrid machines={machines} uid={uid} />
+            <DormFilter
+              options={dormOptions}
+              selected={selectedDorms}
+              onToggle={filter.toggleDorm}
+              onClear={filter.clearDorms}
+            />
+            <StatusGrid machines={visibleMachines} uid={uid} filtered={selectedDorms.length > 0} />
           </div>
         </div>
       </main>

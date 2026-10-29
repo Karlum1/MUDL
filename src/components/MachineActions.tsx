@@ -237,7 +237,6 @@ export function MachineActions({
                 pending={pending}
                 kind={machine.kind}
                 mode="wash"
-                onPreset={(minutes) => void run("start", minutes, "wash")}
                 onCustom={() => void run("start", customWash, "wash")}
               />
               <TimeChoices
@@ -250,7 +249,6 @@ export function MachineActions({
                 pending={pending}
                 kind={machine.kind}
                 mode="dry"
-                onPreset={(minutes) => void run("start", minutes, "dry")}
                 onCustom={() => void run("start", customDry, "dry")}
               />
             </>
@@ -264,7 +262,6 @@ export function MachineActions({
               pending={pending}
               kind={machine.kind}
               mode="dry"
-              onPreset={(minutes) => void run("start", minutes, "dry")}
               onCustom={() => void run("start", customDry, "dry")}
             />
           ) : (
@@ -277,7 +274,6 @@ export function MachineActions({
               pending={pending}
               kind={machine.kind}
               mode="wash"
-              onPreset={(minutes) => void run("start", minutes, "wash")}
               onCustom={() => void run("start", customWash, "wash")}
             />
           )}
@@ -446,7 +442,6 @@ function TimeChoices({
   pending,
   kind,
   mode,
-  onPreset,
   onCustom,
 }: {
   locale: Locale;
@@ -458,40 +453,50 @@ function TimeChoices({
   pending: boolean;
   kind: MachineKind;
   mode: CycleMode;
-  onPreset: (minutes: number) => void;
   onCustom: () => void;
 }) {
   const preview = etaPhrase(kind, mode, Date.now() + customMinutes * 60 * 1000, locale);
   return (
     <div className="rounded-3xl border border-line bg-field p-4">
       {title && <p className="mb-3 text-sm font-semibold text-accent">{title}</p>}
-      <div className="grid gap-2">
-        {presets.map((minutes) => (
-          <button
-            key={minutes}
-            type="button"
-            disabled={pending}
-            onClick={() => onPreset(minutes)}
-            className="rounded-2xl bg-chip px-4 py-3 text-sm font-semibold text-foreground ring-1 ring-line hover:opacity-90 disabled:opacity-60"
-          >
-            {startLabel} {formatCycleLabel(minutes, locale)}
-            <span className="mt-1 block text-xs font-normal opacity-80">
-              {etaPhrase(kind, mode, Date.now() + minutes * 60 * 1000, locale)}
-            </span>
-          </button>
-        ))}
-        <div className="mt-2">
-          <WasherDial value={customMinutes} onChange={onCustomMinutes} disabled={pending} />
-          <p className="mt-2 text-center text-sm text-accent">{preview}</p>
-          <button
-            type="button"
-            disabled={pending}
-            onClick={onCustom}
-            className="mt-3 w-full rounded-2xl bg-accent px-4 py-4 text-base font-semibold text-accent-fg hover:bg-accent-hover disabled:opacity-60"
-          >
-            {startLabel} {formatCycleLabel(customMinutes, locale)}
-          </button>
-        </div>
+      <p className="text-xs font-medium text-muted">{t(locale, "presetQuick")}</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {presets.map((minutes) => {
+          const selected = customMinutes === minutes;
+          return (
+            <button
+              key={minutes}
+              type="button"
+              disabled={pending}
+              aria-pressed={selected}
+              onClick={() => onCustomMinutes(minutes)}
+              className={`rounded-full px-4 py-2 text-sm font-semibold transition disabled:opacity-60 ${
+                selected
+                  ? "bg-accent/15 text-accent ring-2 ring-accent"
+                  : "bg-transparent text-foreground ring-1 ring-line hover:bg-chip"
+              }`}
+            >
+              {formatCycleLabel(minutes, locale)}
+            </button>
+          );
+        })}
+      </div>
+      <div className="mt-4">
+        <WasherDial
+          value={customMinutes}
+          onChange={onCustomMinutes}
+          disabled={pending}
+          tone={mode === "dry" ? "dry" : "wash"}
+        />
+        <p className="mt-2 text-center text-sm text-accent">{preview}</p>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={onCustom}
+          className="mt-3 w-full rounded-2xl bg-accent px-4 py-4 text-base font-semibold text-accent-fg hover:bg-accent-hover disabled:opacity-60"
+        >
+          {startLabel} {formatCycleLabel(customMinutes, locale)}
+        </button>
       </div>
     </div>
   );
