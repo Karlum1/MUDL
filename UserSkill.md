@@ -33,16 +33,19 @@
 
 เอกสาร `dailyStats/2026-10-29` เป็นตัวนับอีกชุด กราฟแอดมินไม่อ่านชุดนี้ ไม่ต้องลบเพื่อให้แท่งวันนี้หาย
 
-## อย่าใส่ firebase-admin/auth กลับ และตรวจ cron
+## cron ขึ้น 500 เพราะ firebase-admin/auth
 
-`src/lib/admin.ts` ห้าม import `firebase-admin/auth` และห้ามเพิ่ม `getAdminAuth` ถ้าใส่กลับ ฟังก์ชันบน Vercel จะพัง `ERR_REQUIRE_ESM` เพราะโหลดโมดูล auth
+สาเหตุ: `GET /api/cron/tick` เรียก `runLaundryTick` ซึ่งใช้ `getAdminDb()` จาก `src/lib/admin.ts` ไฟล์นั้นเคย import `firebase-admin/auth` ไว้ด้านบน แม้ cron ไม่ได้ตรวจโทเคน ผู้ใช้ก็ยังโหลดโมดูล auth ตอนเริ่มฟังก์ชัน โมดูลนี้ไป `require()` แพ็กเกจ `jose` ที่เป็น ESM ผ่าน `jwks-rsa` Node บน Vercel รับ ESM แบบ `require()` ไม่ได้ จึงโยน `ERR_REQUIRE_ESM` แล้วตอบ 500
 
-ตรวจโทเคนด้วย `verifyFirebaseIdToken` ใน `src/lib/verifyIdToken.ts` ฟังก์ชันคืน uid เป็นข้อความ ไม่ใช่ `{ uid }`
+วิธีแก้:
 
-หลัง deploy แล้วตรวจ cron ด้วยคำสั่งนี้ ใส่ค่า `CRON_SECRET` จาก env ของ Vercel
+1. ใน `src/lib/admin.ts` ลบ `import { getAuth } from "firebase-admin/auth"` และลบฟังก์ชัน `getAdminAuth` ทั้งก้อน ห้ามใส่กลับ
+2. ถ้าต้องตรวจ ID token ให้ใช้ `verifyFirebaseIdToken` ใน `src/lib/verifyIdToken.ts` ฟังก์ชันคืน uid เป็นข้อความ ไม่ใช่ `{ uid }`
+3. Deploy ขึ้น Vercel อีกรอบ ของที่รันอยู่จะยัง 500 จนกว่าบิลด์ใหม่จะขึ้น
+4. ตรวจด้วยคำสั่งนี้ ใส่ค่า `CRON_SECRET` จาก env ของ Vercel
 
 ```powershell
 curl.exe -H "Authorization: Bearer <CRON_SECRET>" https://washing-machine-queue.vercel.app/api/cron/tick
 ```
 
-สำเร็จได้ JSON แบบ `{ "ok": true }` ถ้าได้ 500 ว่างเปล่า ให้ดูล็อก deployment ของ `GET /api/cron/tick` ถ้ายังเขียนว่า `ERR_REQUIRE_ESM` และ `firebase-admin/.../auth` แปลว่าของที่รันอยู่ยังเป็นบิลด์เก่า
+สำเร็จได้ JSON แบบ `{ "ok": true }` ถ้ายังเป็น 500 และล็อกยังเขียน `firebase-admin/.../auth` กับ `ERR_REQUIRE_ESM` แปลว่า deployment ที่รับงานยังเป็นบิลด์เก่า
